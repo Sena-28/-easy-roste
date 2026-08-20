@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3a6e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Easy Roster">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Easy Roster</title>
+<style>
+:root{
+  --navy:#0b3a6e; --blue:#1d6fa5; --bg:#f5f7fb; --card:#fff; --text:#17324d;
+  --muted:#6d7d90; --line:#d9e2ec; --green:#2f855a; --orange:#c96f16;
+  --purple:#6b46c1; --red:#c53030;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+body{padding-bottom:88px}
+header{
+  position:sticky;top:0;z-index:20;background:rgba(245,247,251,.94);backdrop-filter:blur(16px);
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid rgba(217,226,236,.9)
+}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:900px;margin:auto}
+.brand h1{font-size:22px;margin:0}.brand p{font-size:12px;margin:3px 0 0;color:var(--muted)}
+.iconbtn{border:0;background:#e8eef6;color:var(--navy);width:40px;height:40px;border-radius:12px;font-size:18px;font-weight:700}
+main{max-width:900px;margin:auto;padding:16px}
+.hero{background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;border-radius:22px;padding:20px;margin-bottom:16px;box-shadow:0 10px 30px rgba(11,58,110,.18)}
+.hero h2{margin:0 0 6px;font-size:24px}.hero p{margin:0;opacity:.9}
+.quickgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
+.quick{border:0;border-radius:18px;padding:18px;text-align:left;background:var(--card);box-shadow:0 5px 18px rgba(18,38,63,.06);min-height:112px}
+.quick strong{display:block;font-size:18px;margin-top:8px}.quick span{font-size:12px;color:var(--muted)}
+.dot{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800}
+.dot.am{background:#e8f7ee;color:var(--green)} .dot.pm{background:#fff0df;color:var(--orange)}
+.dot.night{background:#eee9fb;color:var(--purple)} .dot.week{background:#e6f0fb;color:var(--blue)}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 10px}
+.section-title h3{margin:0;font-size:17px}.muted{color:var(--muted);font-size:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 3px 12px rgba(18,38,63,.04)}
+.rowhead{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+.badge{padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}
+.badge.am{background:#e8f7ee;color:var(--green)} .badge.pm{background:#fff0df;color:var(--orange)}
+.badge.night{background:#eee9fb;color:var(--purple)} .badge.custom{background:#e6f0fb;color:var(--blue)}
+.staffrow{border-top:1px solid #edf1f5;padding:10px 0}.staffrow:first-child{border-top:0}
+.staffname{font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:4px}
+.alert{color:var(--red);font-weight:700}
+.btn{border:0;border-radius:12px;padding:10px 12px;font-weight:700}
+.primary{background:var(--navy);color:#fff}.secondary{background:#e8eef6;color:var(--navy)}.danger{background:#fde8e8;color:var(--red)}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}
+label{font-size:12px;color:var(--muted)}
+input,select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:11px;background:#fff;font:inherit;color:var(--text)}
+textarea{min-height:86px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.hidden{display:none!important}
+.search{margin-bottom:12px}
+.bottomnav{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(4,1fr)
+}
+.bottomnav button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px}
+.bottomnav button strong{display:block;font-size:20px;line-height:1.1;margin-bottom:2px}.bottomnav button.active{color:var(--navy)}
+.modal{position:fixed;inset:0;background:rgba(8,20,34,.45);z-index:50;display:flex;align-items:flex-end}
+.sheet{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
+.sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.sheethead h3{margin:0}
+@media(min-width:700px){.quickgrid{grid-template-columns:repeat(4,1fr)} .modal{align-items:center;justify-content:center}.sheet{max-width:620px;border-radius:24px;max-height:80vh}}
+</style>
+</head>
+<body>
+<header>
+  <div class="topbar">
+    <div class="brand"><h1>Easy Roster</h1><p id="todayLabel">Your weekly roster</p></div>
+    <button class="iconbtn" onclick="openAdd()">＋</button>
+  </div>
+</header>
+
+<main>
+  <section id="homeView">
+    <div class="hero"><h2>Roster at a glance</h2><p id="heroSummary">No staff added yet.</p></div>
+
+    <div class="quickgrid">
+      <button class="quick" onclick="showShift('AM')"><div class="dot am">AM</div><strong>AM Shift</strong><span id="amCount">0 staff</span></button>
+      <button class="quick" onclick="showShift('PM')"><div class="dot pm">PM</div><strong>PM Shift</strong><span id="pmCount">0 staff</span></button>
+      <button class="quick" onclick="showShift('Night')"><div class="dot night">N</div><strong>Night Shift</strong><span id="nightCount">0 staff</span></button>
+      <button class="quick" onclick="showWeekly()"><div class="dot week">7D</div><strong>Weekly Roster</strong><span>Monday to Sunday</span></button>
+    </div>
+
+    <div class="section-title"><h3>Sick calls & leave</h3><span class="muted" id="sickCount">0 entries</span></div>
+    <div id="sickList"></div>
+
+    <div class="section-title"><h3>Recent roster entries</h3><button class="btn secondary" onclick="showWeekly()">View all</button></div>
+    <div id="recentList"></div>
+  </section>
+
+  <section id="weeklyView" class="hidden">
+    <div class="section-title"><h3>Weekly Roster</h3><button class="btn primary" onclick="openAdd()">+ Add Staff</button></div>
+    <input class="search" id="searchBox" placeholder="Search staff, ward or notes" oninput="renderWeekly()">
+    <div class="formgrid" style="margin-bottom:12px">
+      <div class="field"><label>Day</label>
+        <select id="dayFilter" onchange="renderWeekly()"><option value="ALL">All days</option>
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+        </select>
+      </div>
+      <div class="field"><label>Shift</label>
+        <select id="shiftFilter" onchange="renderWeekly()"><option value="ALL">All shifts</option><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select>
+      </div>
+    </div>
+    <div id="weeklyList"></div>
+  </section>
+
+  <section id="sickView" class="hidden">
+    <div class="section-title"><h3>Sick Calls & Leave</h3></div>
+    <div id="allSickList"></div>
+  </section>
+
+  <section id="settingsView" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0">Backup & print</h3>
+      <p class="muted">Your roster is saved on this device. Export a backup occasionally.</p>
+      <div class="actions">
+        <button class="btn primary" onclick="exportData()">Export Backup</button>
+        <label class="btn secondary" for="importFile">Import Backup</label>
+        <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn secondary" onclick="window.print()">Print / Save PDF</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Reset</h3>
+      <p class="muted">This removes all roster entries from this device.</p>
+      <button class="btn danger" onclick="clearAll()">Clear All Data</button>
+    </div>
+  </section>
+</main>
+
+<nav class="bottomnav">
+  <button id="navHome" class="active" onclick="go('home')"><strong>⌂</strong>Home</button>
+  <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
+  <button id="navSick" onclick="go('sick')"><strong>!</strong>Sick</button>
+  <button id="navSet" onclick="go('settings')"><strong>⚙</strong>Settings</button>
+</nav>
+
+<div id="modal" class="modal hidden" onclick="if(event.target===this) closeModal()">
+  <div class="sheet">
+    <div class="sheethead"><h3 id="formTitle">Add Staff</h3><button class="iconbtn" onclick="closeModal()">×</button></div>
+    <input type="hidden" id="editId">
+    <div class="formgrid">
+      <div class="field"><label>Day</label><select id="fDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+      <div class="field"><label>Shift</label><select id="fShift" onchange="applyDefaults()"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
+      <div class="field full"><label>Staff name</label><input id="fName" placeholder="Staff name"></div>
+      <div class="field full"><label>Ward / Unit</label><input id="fWard" placeholder="Ward or unit"></div>
+      <div class="field"><label>Start</label><input id="fStart" type="time"></div>
+      <div class="field"><label>Finish</label><input id="fFinish" type="time"></div>
+      <div class="field full"><label>Sick leave</label>
+        <select id="fLeave"><option value="">No sick leave</option><option>Full shift</option><option>Part shift</option><option>Personal leave</option></select>
+      </div>
+      <div class="field full"><label><input id="fSickCall" type="checkbox" style="width:auto;margin-right:7px">Sick call</label></div>
+      <div class="field full"><label>Replacement staff</label><input id="fReplacement" placeholder="Replacement if required"></div>
+      <div class="field full"><label>Notes</label><textarea id="fNotes" placeholder="Handover, leave details, changes or other notes"></textarea></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="saveEntry()">Save</button>
+      <button id="deleteBtn" class="btn danger hidden" onclick="deleteEntry()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DEFAULTS={AM:["07:00","15:30"],PM:["13:00","21:00"],Night:["21:00","07:30"],Custom:["",""]};
+let entries=JSON.parse(localStorage.getItem("easyRosterPWA")||"[]");
+
+function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
+function save(){localStorage.setItem("easyRosterPWA",JSON.stringify(entries));}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
+function cls(s){return s==="AM"?"am":s==="PM"?"pm":s==="Night"?"night":"custom";}
+function todayName(){return new Intl.DateTimeFormat("en-AU",{weekday:"long"}).format(new Date())}
+document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
+
+function countShift(s){return entries.filter(e=>e.shift===s).length}
+function renderHome(){
+  document.getElementById("amCount").textContent=countShift("AM")+" staff";
+  document.getElementById("pmCount").textContent=countShift("PM")+" staff";
+  document.getElementById("nightCount").textContent=countShift("Night")+" staff";
+  document.getElementById("heroSummary").textContent=entries.length?`${entries.length} roster entries saved on this device.`:"No staff added yet.";
+  const sick=entries.filter(e=>e.sickCall||e.leave);
+  document.getElementById("sickCount").textContent=sick.length+" entries";
+  document.getElementById("sickList").innerHTML=sick.length?sick.slice(-4).reverse().map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
+  document.getElementById("recentList").innerHTML=entries.length?entries.slice(-5).reverse().map(entryCard).join(""):'<div class="card muted">Add your first roster entry using the + button.</div>';
+}
+function entryCard(e){
+  const alert=(e.sickCall||e.leave)?`<div class="meta alert">${e.sickCall?"Sick call":""}${e.sickCall&&e.leave?" • ":""}${esc(e.leave||"")}</div>`:"";
+  return `<div class="card" onclick="editEntry('${e.id}')">
+    <div class="rowhead"><div><span class="badge ${cls(e.shift)}">${esc(e.shift)}</span> <strong>${esc(e.day)}</strong></div><span class="muted">${esc(e.start)}–${esc(e.finish)}</span></div>
+    <div class="staffname">${esc(e.name||"Unnamed staff")}</div>
+    <div class="meta">${esc(e.ward||"No ward/unit")}${e.replacement?` • Replacement: ${esc(e.replacement)}`:""}</div>
+    ${alert}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
+  </div>`;
+}
+function renderWeekly(){
+  let q=(document.getElementById("searchBox")?.value||"").toLowerCase();
+  let day=document.getElementById("dayFilter")?.value||"ALL";
+  let shift=document.getElementById("shiftFilter")?.value||"ALL";
+  let list=entries.filter(e=>(day==="ALL"||e.day===day)&&(shift==="ALL"||e.shift===shift)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
+  list.sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||["AM","PM","Night","Custom"].indexOf(a.shift)-["AM","PM","Night","Custom"].indexOf(b.shift));
+  document.getElementById("weeklyList").innerHTML=list.length?list.map(entryCard).join(""):'<div class="card muted">No roster entries match your filters.</div>';
+}
+function renderSick(){
+  const sick=entries.filter(e=>e.sickCall||e.leave);
+  document.getElementById("allSickList").innerHTML=sick.length?sick.map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
+}
+function go(view){
+  ["homeView","weeklyView","sickView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
+  if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
+  if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
+  if(view==="settings"){settingsView.classList.remove("hidden");navSet.classList.add("active");}
+}
+function showShift(s){go("week");document.getElementById("shiftFilter").value=s;renderWeekly();}
+function showWeekly(){go("week");}
+
+function openAdd(){
+  document.getElementById("formTitle").textContent="Add Staff";
+  document.getElementById("editId").value="";
+  document.getElementById("fDay").value=todayName();
+  document.getElementById("fShift").value="AM";
+  document.getElementById("fName").value="";
+  document.getElementById("fWard").value="";
+  document.getElementById("fLeave").value="";
+  document.getElementById("fSickCall").checked=false;
+  document.getElementById("fReplacement").value="";
+  document.getElementById("fNotes").value="";
+  document.getElementById("deleteBtn").classList.add("hidden");
+  applyDefaults();
+  modal.classList.remove("hidden");
+}
+function applyDefaults(){
+  const d=DEFAULTS[document.getElementById("fShift").value];
+  document.getElementById("fStart").value=d[0];document.getElementById("fFinish").value=d[1];
+}
+function editEntry(id){
+  const e=entries.find(x=>x.id===id); if(!e)return;
+  document.getElementById("formTitle").textContent="Edit Staff";
+  document.getElementById("editId").value=e.id;
+  document.getElementById("fDay").value=e.day;document.getElementById("fShift").value=e.shift;
+  document.getElementById("fName").value=e.name;document.getElementById("fWard").value=e.ward;
+  document.getElementById("fStart").value=e.start;document.getElementById("fFinish").value=e.finish;
+  document.getElementById("fLeave").value=e.leave||"";document.getElementById("fSickCall").checked=!!e.sickCall;
+  document.getElementById("fReplacement").value=e.replacement||"";document.getElementById("fNotes").value=e.notes||"";
+  document.getElementById("deleteBtn").classList.remove("hidden");modal.classList.remove("hidden");
+}
+function closeModal(){modal.classList.add("hidden")}
+function saveEntry(){
+  const id=document.getElementById("editId").value;
+  const obj={id:id||uid(),day:fDay.value,shift:fShift.value,name:fName.value.trim(),ward:fWard.value.trim(),start:fStart.value,finish:fFinish.value,leave:fLeave.value,sickCall:fSickCall.checked,replacement:fReplacement.value.trim(),notes:fNotes.value.trim()};
+  if(id){entries=entries.map(e=>e.id===id?obj:e)}else{entries.push(obj)}
+  save();closeModal();renderHome();renderWeekly();renderSick();
+}
+function deleteEntry(){
+  const id=document.getElementById("editId").value;if(!id)return;
+  if(confirm("Delete this roster entry?")){entries=entries.filter(e=>e.id!==id);save();closeModal();renderHome();renderWeekly();renderSick();}
+}
+function clearAll(){if(confirm("Clear all roster data from this device?")){entries=[];save();renderHome();renderWeekly();renderSick();}}
+function exportData(){
+  const blob=new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="easy-roster-backup.json";a.click();URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const f=ev.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{entries=JSON.parse(r.result);save();renderHome();renderWeekly();renderSick();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
+  r.readAsText(f);
+}
+renderHome();
+if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
+</script>
+</body>
+</html>
