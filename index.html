@@ -198,7 +198,7 @@ textarea{min-height:86px;resize:vertical}
       </div>
       <div class="field"><label>Default ward / unit</label><input id="sfWard" placeholder="Optional"></div>
       <div class="field"><label>Default shift</label><select id="sfShift"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
-      <div class="field"><label>Role / notes</label><input id="sfRole" placeholder="Optional"></div>
+      <div class="field"><label>Role</label><select id="sfRole"><option value="">Select role</option><option>ESA</option><option>PSA</option><option>MIT Assistant</option></select></div><div class="field full"><label>Staff notes</label><input id="sfStaffNotes" placeholder="Optional notes"></div>
     </div>
     <div class="actions">
       <button class="btn primary" onclick="saveStaff()">Save Staff</button>
@@ -249,7 +249,7 @@ function renderStaff(){
         <div class="staffname">${esc(s.name)}</div>
         <span class="badge ${s.type==="Casual"?"pm":s.type==="Pool"?"night":"am"}">${esc(s.type||"Regular")}</span>
       </div>
-      <div class="meta">${esc(s.ward||"No default ward")}${s.shift?` • ${esc(s.shift)}`:""}${s.role?` • ${esc(s.role)}`:""}</div>
+      <div class="meta">${esc(s.ward||"No default ward")}${s.shift?` • ${esc(s.shift)}`:""}${s.role?` • ${esc(s.role)}`:""}${s.staffNotes?` • ${esc(s.staffNotes)}`:""}</div>
     </div>`;
   host.innerHTML=`
     <div class="section-title"><h3>Regular Staff</h3><span class="muted">${regular.length} staff</span></div>
@@ -261,13 +261,13 @@ function renderStaff(){
 }
 function openStaffAdd(){
   staffFormTitle.textContent="Add Staff";
-  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfShift.value="AM"; sfRole.value="";
+  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfShift.value="AM"; sfRole.value=""; sfStaffNotes.value="";
   staffDeleteBtn.classList.add("hidden"); staffModal.classList.remove("hidden");
 }
 function editStaff(id){
   const s=staff.find(x=>x.id===id); if(!s)return;
   staffFormTitle.textContent="Edit Staff"; staffEditId.value=s.id;
-  sfName.value=s.name||""; sfType.value=s.type||"Regular"; sfWard.value=s.ward||""; sfShift.value=s.shift||"AM"; sfRole.value=s.role||"";
+  sfName.value=s.name||""; sfType.value=s.type||"Regular"; sfWard.value=s.ward||""; sfShift.value=s.shift||"AM"; sfRole.value=s.role||""; sfStaffNotes.value=s.staffNotes||"";
   staffDeleteBtn.classList.remove("hidden"); staffModal.classList.remove("hidden");
 }
 function closeStaffModal(){staffModal.classList.add("hidden")}
@@ -275,7 +275,7 @@ function saveStaff(){
   const id=staffEditId.value;
   const name=sfName.value.trim();
   if(!name){alert("Please enter a staff name.");return;}
-  const obj={id:id||uid(),name,type:sfType.value,ward:sfWard.value.trim(),shift:sfShift.value,role:sfRole.value.trim()};
+  const obj={id:id||uid(),name,type:sfType.value,ward:sfWard.value.trim(),shift:sfShift.value,role:sfRole.value,staffNotes:sfStaffNotes.value.trim()};
   if(id){staff=staff.map(s=>s.id===id?obj:s)}else{staff.push(obj)}
   saveStaffData(); refreshStaffDatalist(); renderStaff(); closeStaffModal();
 }
