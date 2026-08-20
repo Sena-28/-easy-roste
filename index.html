@@ -71,7 +71,7 @@ textarea{min-height:86px;resize:vertical}
 <body>
 <header>
   <div class="topbar">
-    <div class="brand"><h1>Easy Roster</h1><p id="todayLabel">Your weekly roster</p></div>
+    <div class="brand"><h1>Easy Roster</h1><p id="todayLabel">Your weekly roster</p><p style="margin:2px 0 0;font-size:10px;opacity:.7">V9</p></div>
     <button class="iconbtn" onclick="openAdd()">＋</button>
   </div>
 </header>
@@ -196,7 +196,11 @@ textarea{min-height:86px;resize:vertical}
       <div class="field"><label>Staff type</label>
         <select id="sfType"><option>Regular</option><option>Casual</option><option>Pool</option></select>
       </div>
-      <div class="field"><label>Default ward / unit</label><input id="sfWard" placeholder="Optional"></div>
+      <div class="field"><label>Default ward / unit</label><select id="sfWard" onchange="toggleCustomWard()"><option value="">Select ward / unit</option><option value="PM Floater">PM Floater</option><option value="ED">ED</option><option value="ICU">ICU</option><option value="Imaging">Imaging</option><option value="Theatre">Theatre</option><option value="Ward A">Ward A</option><option value="Ward B">Ward B</option><option value="Ward C">Ward C</option><option value="Ward D">Ward D</option><option value="Ward E">Ward E</option><option value="Ward F">Ward F</option><option value="Ward G">Ward G</option><option value="Ward H">Ward H</option><option value="T2">T2</option><option value="T3">T3</option><option value="T4">T4</option><option value="T5">T5</option><option value="SCN">SCN</option><option value="Dialysis">Dialysis</option><option value="Imag/ED/Annex">Imag/ED/Annex</option><option value="Annex PM">Annex PM</option><option value="ED Fast Track">ED Fast Track</option><option value="Ward A/F ESA">Ward A/F ESA</option><option value="EPC Clyde North">EPC Clyde North</option><option value="Other / Custom Ward">Other / Custom Ward</option></select>
+      <div class="field full" id="customWardField" style="display:none">
+        <label>Custom ward / unit</label>
+        <input id="sfCustomWard" placeholder="Enter ward or unit">
+      </div></div>
       <div class="field"><label>Default shift</label><select id="sfShift"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
       <div class="field"><label>Role</label><select id="sfRole" onchange="toggleOtherRole()">
           <option value="">Select role</option>
@@ -253,6 +257,13 @@ function toggleOtherRole(){
   field.style.display=sfRole.value==="Other"?"flex":"none";
   if(sfRole.value!=="Other")sfOtherRole.value="";
 }
+
+function toggleCustomWard(){
+  const field=document.getElementById("customWardField");
+  if(!field)return;
+  field.style.display=sfWard.value==="Other / Custom Ward"?"flex":"none";
+  if(sfWard.value!=="Other / Custom Ward")sfCustomWard.value="";
+}
 function renderStaff(){
   const host=document.getElementById("staffList"); if(!host)return;
   const q=(document.getElementById("staffSearch")?.value||"").toLowerCase();
@@ -278,13 +289,16 @@ function renderStaff(){
 }
 function openStaffAdd(){
   staffFormTitle.textContent="Add Staff";
-  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfShift.value="AM"; sfRole.value=""; sfOtherRole.value=""; sfStaffNotes.value=""; toggleOtherRole();
+  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfCustomWard.value=""; sfShift.value="AM"; sfRole.value=""; sfOtherRole.value=""; sfStaffNotes.value=""; toggleCustomWard(); toggleOtherRole();
   staffDeleteBtn.classList.add("hidden"); staffModal.classList.remove("hidden");
 }
 function editStaff(id){
   const s=staff.find(x=>x.id===id); if(!s)return;
   staffFormTitle.textContent="Edit Staff"; staffEditId.value=s.id;
-  sfName.value=s.name||""; sfType.value=s.type||"Regular"; sfWard.value=s.ward||""; sfShift.value=s.shift||"AM";
+  sfName.value=s.name||""; sfType.value=s.type||"Regular";
+  const knownWards=["PM Floater", "ED", "ICU", "Imaging", "Theatre", "Ward A", "Ward B", "Ward C", "Ward D", "Ward E", "Ward F", "Ward G", "Ward H", "T2", "T3", "T4", "T5", "SCN", "Dialysis", "Imag/ED/Annex", "Annex PM", "ED Fast Track", "Ward A/F ESA", "EPC Clyde North"];
+  if(s.ward && !knownWards.includes(s.ward)){sfWard.value="Other / Custom Ward";sfCustomWard.value=s.ward;}else{sfWard.value=s.ward||"";sfCustomWard.value="";}
+  sfShift.value=s.shift||"AM"; toggleCustomWard();
   const standardRoles=["ESA","PSA","MIT Assistant","Team Leader","Supervisor","Manager"];
   if(s.role && !standardRoles.includes(s.role)){sfRole.value="Other";sfOtherRole.value=s.role;}else{sfRole.value=s.role||"";sfOtherRole.value="";}
   sfStaffNotes.value=s.staffNotes||""; toggleOtherRole();
@@ -296,7 +310,8 @@ function saveStaff(){
   const name=sfName.value.trim();
   if(!name){alert("Please enter a staff name.");return;}
   const chosenRole=sfRole.value==="Other"?sfOtherRole.value.trim():sfRole.value;
-  const obj={id:id||uid(),name,type:sfType.value,ward:sfWard.value.trim(),shift:sfShift.value,role:chosenRole,staffNotes:sfStaffNotes.value.trim()};
+  const chosenWard=sfWard.value==="Other / Custom Ward"?sfCustomWard.value.trim():sfWard.value;
+  const obj={id:id||uid(),name,type:sfType.value,ward:chosenWard,shift:sfShift.value,role:chosenRole,staffNotes:sfStaffNotes.value.trim()};
   if(id){staff=staff.map(s=>s.id===id?obj:s)}else{staff.push(obj)}
   saveStaffData(); refreshStaffDatalist(); renderStaff(); closeStaffModal();
 }
