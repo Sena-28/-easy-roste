@@ -193,7 +193,10 @@ textarea{min-height:86px;resize:vertical}
     <input type="hidden" id="staffEditId">
     <div class="formgrid">
       <div class="field full"><label>Staff name</label><input id="sfName" placeholder="Staff name"></div>
-      <div class="field full"><label>Default ward / unit</label><input id="sfWard" placeholder="Optional"></div>
+      <div class="field"><label>Staff type</label>
+        <select id="sfType"><option>Regular</option><option>Casual</option><option>Pool</option></select>
+      </div>
+      <div class="field"><label>Default ward / unit</label><input id="sfWard" placeholder="Optional"></div>
       <div class="field"><label>Default shift</label><select id="sfShift"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
       <div class="field"><label>Role / notes</label><input id="sfRole" placeholder="Optional"></div>
     </div>
@@ -215,6 +218,9 @@ if(!Array.isArray(staff) || staff.length===0){
   localStorage.setItem("easyRosterStaff",JSON.stringify(staff));
 }
 
+staff.forEach(s=>{if(!s.type)s.type="Regular";});
+localStorage.setItem("easyRosterStaff",JSON.stringify(staff));
+
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
 function save(){localStorage.setItem("easyRosterPWA",JSON.stringify(entries));}
 function saveStaffData(){localStorage.setItem("easyRosterStaff",JSON.stringify(staff));}
@@ -233,22 +239,35 @@ function refreshStaffDatalist(){
 function renderStaff(){
   const host=document.getElementById("staffList"); if(!host)return;
   const q=(document.getElementById("staffSearch")?.value||"").toLowerCase();
-  const list=staff.filter(s=>!q||JSON.stringify(s).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
-  host.innerHTML=list.length?list.map(s=>`
+  const filtered=staff.filter(s=>!q||JSON.stringify(s).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
+  const regular=filtered.filter(s=>(s.type||"Regular")==="Regular");
+  const casual=filtered.filter(s=>s.type==="Casual");
+  const pool=filtered.filter(s=>s.type==="Pool");
+  const card=s=>`
     <div class="card" onclick="editStaff('${s.id}')">
-      <div class="staffname">${esc(s.name)}</div>
+      <div class="rowhead">
+        <div class="staffname">${esc(s.name)}</div>
+        <span class="badge ${s.type==="Casual"?"pm":s.type==="Pool"?"night":"am"}">${esc(s.type||"Regular")}</span>
+      </div>
       <div class="meta">${esc(s.ward||"No default ward")}${s.shift?` • ${esc(s.shift)}`:""}${s.role?` • ${esc(s.role)}`:""}</div>
-    </div>`).join(""):'<div class="card muted">No regular staff added yet.</div>';
+    </div>`;
+  host.innerHTML=`
+    <div class="section-title"><h3>Regular Staff</h3><span class="muted">${regular.length} staff</span></div>
+    ${regular.length?regular.map(card).join(""):'<div class="card muted">No regular staff found.</div>'}
+    <div class="section-title"><h3>Casual Staff</h3><span class="muted">${casual.length} staff</span></div>
+    ${casual.length?casual.map(card).join(""):'<div class="card muted">No casual staff added yet.</div>'}
+    <div class="section-title"><h3>Pool Staff</h3><span class="muted">${pool.length} staff</span></div>
+    ${pool.length?pool.map(card).join(""):'<div class="card muted">No pool staff added yet.</div>'}`;
 }
 function openStaffAdd(){
   staffFormTitle.textContent="Add Staff";
-  staffEditId.value=""; sfName.value=""; sfWard.value=""; sfShift.value="AM"; sfRole.value="";
+  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfShift.value="AM"; sfRole.value="";
   staffDeleteBtn.classList.add("hidden"); staffModal.classList.remove("hidden");
 }
 function editStaff(id){
   const s=staff.find(x=>x.id===id); if(!s)return;
   staffFormTitle.textContent="Edit Staff"; staffEditId.value=s.id;
-  sfName.value=s.name||""; sfWard.value=s.ward||""; sfShift.value=s.shift||"AM"; sfRole.value=s.role||"";
+  sfName.value=s.name||""; sfType.value=s.type||"Regular"; sfWard.value=s.ward||""; sfShift.value=s.shift||"AM"; sfRole.value=s.role||"";
   staffDeleteBtn.classList.remove("hidden"); staffModal.classList.remove("hidden");
 }
 function closeStaffModal(){staffModal.classList.add("hidden")}
@@ -256,7 +275,7 @@ function saveStaff(){
   const id=staffEditId.value;
   const name=sfName.value.trim();
   if(!name){alert("Please enter a staff name.");return;}
-  const obj={id:id||uid(),name,ward:sfWard.value.trim(),shift:sfShift.value,role:sfRole.value.trim()};
+  const obj={id:id||uid(),name,type:sfType.value,ward:sfWard.value.trim(),shift:sfShift.value,role:sfRole.value.trim()};
   if(id){staff=staff.map(s=>s.id===id?obj:s)}else{staff.push(obj)}
   saveStaffData(); refreshStaffDatalist(); renderStaff(); closeStaffModal();
 }

@@ -1,17 +1,12 @@
-EASY ROSTER - IPHONE WEB APP V2
+EASY ROSTER - IPHONE WEB APP V4
 
-New features:
-- Saved Staff List
-- Select regular staff names instead of retyping
-- Default ward/unit and default shift per staff member
-- Annual Leave
-- RDO
-- Float / Relief
-- Overtime
-- No Show
-- Sick Call and Sick Leave
-- Replacement staff
-- Notes
-- Search, filters, backup and print
+New:
+- Staff page separates Regular Staff and Casual Staff
+- Add a staff member as Regular or Casual
+- Casual staff can be selected in AM, PM, Night or Custom roster shifts
+- Existing saved staff are kept as Regular by default
+- Sick Call, leave/status, replacement staff and notes remain available
 
-- 186 staff names preloaded from supplied roster PDF.
+V5
+- Added Pool Staff as a third staff type.
+- Staff page now separates Regular, Casual and Pool Staff.
