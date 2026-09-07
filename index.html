@@ -67,6 +67,16 @@ textarea{min-height:86px;resize:vertical}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .hidden{display:none!important}
 .search{margin-bottom:12px}
+.staff-search-wrap{position:relative}
+.staff-search-wrap .search{padding-right:72px;margin:0}
+.clear-search{position:absolute;right:6px;top:6px;border:0;border-radius:9px;background:#e8eef6;color:var(--navy);padding:6px 9px;font-weight:700}
+.search-result{padding:12px 0;border-top:1px solid #edf1f5}
+.search-result:first-child{border-top:0;padding-top:0}
+.search-result:last-child{padding-bottom:0}
+.search-result .staffname{font-size:16px}
+.search-result .where{margin-top:5px;color:var(--text);font-size:13px;font-weight:650}
+.area-heading{margin:18px 2px 8px;padding:8px 11px;border-radius:10px;background:#e6f0fb;color:var(--navy);font-size:13px;font-weight:800}
+.area-heading:first-child{margin-top:4px}
 .bottomnav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
   border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
@@ -98,6 +108,13 @@ textarea{min-height:86px;resize:vertical}
       <button class="quick" onclick="showShift('Night')"><div class="dot night">N</div><strong>Night Shift</strong><span id="nightCount">0 staff</span></button>
       <button class="quick" onclick="showWeekly()"><div class="dot week">7D</div><strong>Weekly Roster</strong><span>Monday to Sunday</span></button>
     </div>
+
+    <div class="section-title"><h3>Find staff</h3><span class="muted" id="staffSearchCount">Type a name</span></div>
+    <div class="staff-search-wrap">
+      <input class="search" id="staffSearchBox" type="search" autocomplete="off" placeholder="Search staff name" aria-label="Search all rostered staff by name" oninput="renderStaffSearch()">
+      <button id="clearStaffSearch" class="clear-search hidden" type="button" onclick="clearStaffSearch()">Clear</button>
+    </div>
+    <div id="staffSearchResults" class="card muted">Enter a staff name to see their day, area and time.</div>
 
     <div class="section-title"><h3>Sick calls & leave</h3><span class="muted" id="sickCount">0 entries</span></div>
     <div id="sickList"></div>
@@ -283,6 +300,54 @@ document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU
 document.getElementById("accessRole").value=accessRole;
 
 function countShift(s){return entries.filter(e=>e.shift===s).length}
+function areaGroup(ward){
+  const area=String(ward||"").trim().toLowerCase();
+  if(area.startsWith("emergency")||area.startsWith("ed ")||area.includes("ed fast track")||area.includes("annex")||area.includes("/ed"))return {order:0,label:"ED, Annex & Fast Track"};
+  if(area.includes("theatre")||area.startsWith("dsu"))return {order:1,label:"Theatre & DSU"};
+  if(area.includes("imaging"))return {order:2,label:"Imaging"};
+  if(/^ward [a-h](\b|\/)/.test(area))return {order:3,label:"Wards A to H"};
+  if(/^tower [2-5]\b/.test(area)||/^t[2-5]\b/.test(area))return {order:4,label:"Towers 2 to 5"};
+  if(area.includes("floater"))return {order:5,label:"Floaters"};
+  return {order:6,label:"Other areas"};
+}
+function weeklySort(a,b){
+  const ga=areaGroup(a.ward),gb=areaGroup(b.ward);
+  return DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||ga.order-gb.order||String(a.ward).localeCompare(String(b.ward))||String(a.start).localeCompare(String(b.start))||String(a.name).localeCompare(String(b.name));
+}
+function groupedWeeklyCards(list){
+  let previous="";
+  return list.map(e=>{
+    const group=areaGroup(e.ward);
+    const key=e.day+"|"+group.label;
+    const heading=key===previous?"":`<div class="area-heading">${esc(e.day)} • ${esc(group.label)}</div>`;
+    previous=key;
+    return heading+entryCard(e);
+  }).join("");
+}
+function renderStaffSearch(){
+  const input=document.getElementById("staffSearchBox");
+  const results=document.getElementById("staffSearchResults");
+  const count=document.getElementById("staffSearchCount");
+  const clear=document.getElementById("clearStaffSearch");
+  if(!input||!results||!count||!clear)return;
+  const q=input.value.trim().toLowerCase();
+  clear.classList.toggle("hidden",!q);
+  if(!q){count.textContent="Type a name";results.className="card muted";results.innerHTML="Enter a staff name to see their day, area and time.";return;}
+  const list=entries.filter(e=>String(e.name||"").toLowerCase().includes(q));
+  list.sort((a,b)=>String(a.name).localeCompare(String(b.name))||weeklySort(a,b));
+  count.textContent=`${list.length} ${list.length===1?"shift":"shifts"}`;
+  results.className="card";
+  results.innerHTML=list.length?list.map(e=>`<div class="search-result" onclick="editEntry('${e.id}')">
+    <div class="staffname">${esc(e.name||"Unnamed staff")} <span class="badge ${cls(e.shift)}">${esc(e.shift)}</span></div>
+    <div class="meta">${esc(e.role||"Role not set")}</div>
+    <div class="where">${esc(e.day)} • ${esc(e.ward||"No area/ward")} • ${esc(e.start)}–${esc(e.finish)}</div>
+  </div>`).join(""):'<div class="muted">No rostered staff names match your search.</div>';
+}
+function clearStaffSearch(){
+  document.getElementById("staffSearchBox").value="";
+  renderStaffSearch();
+  document.getElementById("staffSearchBox").focus();
+}
 function renderHome(){
   document.getElementById("amCount").textContent=countShift("AM")+" staff";
   document.getElementById("pmCount").textContent=countShift("PM")+" staff";
@@ -292,6 +357,7 @@ function renderHome(){
   document.getElementById("sickCount").textContent=sick.length+" entries";
   document.getElementById("sickList").innerHTML=sick.length?sick.slice(-4).reverse().map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
   document.getElementById("recentList").innerHTML=entries.length?entries.slice(-5).reverse().map(entryCard).join(""):'<div class="card muted">Add your first roster entry using the + button.</div>';
+  renderStaffSearch();
 }
 function entryCard(e){
   const sickDetails=e.sickCall?`<div class="meta alert">Sick call${e.reportedTime?` • Reported ${esc(e.reportedTime)}`:""}${e.sickReason?` • ${esc(e.sickReason)}`:""}</div>
@@ -318,8 +384,8 @@ function renderWeekly(){
   let day=document.getElementById("dayFilter")?.value||"ALL";
   let shift=document.getElementById("shiftFilter")?.value||"ALL";
   let list=entries.filter(e=>(day==="ALL"||e.day===day)&&(shift==="ALL"||e.shift===shift)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
-  list.sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||["AM","PM","Night","Custom"].indexOf(a.shift)-["AM","PM","Night","Custom"].indexOf(b.shift));
-  document.getElementById("weeklyList").innerHTML=list.length?list.map(entryCard).join(""):'<div class="card muted">No roster entries match your filters.</div>';
+  list.sort(weeklySort);
+  document.getElementById("weeklyList").innerHTML=list.length?groupedWeeklyCards(list):'<div class="card muted">No roster entries match your filters.</div>';
   renderPMSickSummary();
 }
 function renderSick(){
