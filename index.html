@@ -45,8 +45,20 @@ main{max-width:900px;margin:auto;padding:16px}
 .staffrow{border-top:1px solid #edf1f5;padding:10px 0}.staffrow:first-child{border-top:0}
 .staffname{font-weight:700}.meta{font-size:12px;color:var(--muted);margin-top:4px}
 .alert{color:var(--red);font-weight:700}
+.staffline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.staffline>div{min-width:0}
+.sickbtn{flex:0 0 auto;border:0;border-radius:10px;padding:8px 10px;background:#fde8e8;color:var(--red);font-size:12px;font-weight:800}
+.sickbtn.active{background:var(--red);color:#fff}
+.status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;margin-top:7px}
+.status.needed{background:#fde8e8;color:var(--red)}
+.status.contacted{background:#fff0df;color:var(--orange)}
+.status.confirmed{background:#e8f7ee;color:var(--green)}
+.sick-summary{border-left:5px solid var(--red)}
+.sick-summary h4{margin:0 0 6px}
+.section-note{margin:-4px 0 12px;color:var(--muted);font-size:12px}
 .btn{border:0;border-radius:12px;padding:10px 12px;font-weight:700}
 .primary{background:var(--navy);color:#fff}.secondary{background:#e8eef6;color:var(--navy)}.danger{background:#fde8e8;color:var(--red)}
+.btn:disabled,input:disabled,select:disabled,textarea:disabled{opacity:.58;cursor:not-allowed}
 .formgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field{display:flex;flex-direction:column;gap:5px}.field.full{grid-column:1/-1}
 label{font-size:12px;color:var(--muted)}
@@ -58,20 +70,20 @@ textarea{min-height:86px;resize:vertical}
 .bottomnav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
   border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  display:grid;grid-template-columns:repeat(5,1fr)
+  display:grid;grid-template-columns:repeat(4,1fr)
 }
 .bottomnav button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px}
 .bottomnav button strong{display:block;font-size:20px;line-height:1.1;margin-bottom:2px}.bottomnav button.active{color:var(--navy)}
 .modal{position:fixed;inset:0;background:rgba(8,20,34,.45);z-index:50;display:flex;align-items:flex-end}
 .sheet{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
 .sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.sheethead h3{margin:0}
-@media(min-width:700px){.quickgrid{grid-template-columns:repeat(5,1fr)} .modal{align-items:center;justify-content:center}.sheet{max-width:620px;border-radius:24px;max-height:80vh}}
+@media(min-width:700px){.quickgrid{grid-template-columns:repeat(4,1fr)} .modal{align-items:center;justify-content:center}.sheet{max-width:620px;border-radius:24px;max-height:80vh}}
 </style>
 </head>
 <body>
 <header>
   <div class="topbar">
-    <div class="brand"><h1>Easy Roster</h1><p id="todayLabel">Your weekly roster</p><p style="margin:2px 0 0;font-size:10px;opacity:.7">V9</p></div>
+    <div class="brand"><h1>Easy Roster</h1><p id="todayLabel">Your weekly roster</p></div>
     <button class="iconbtn" onclick="openAdd()">＋</button>
   </div>
 </header>
@@ -96,6 +108,7 @@ textarea{min-height:86px;resize:vertical}
 
   <section id="weeklyView" class="hidden">
     <div class="section-title"><h3>Weekly Roster</h3><button class="btn primary" onclick="openAdd()">+ Add Staff</button></div>
+    <div id="pmSickSummary"></div>
     <input class="search" id="searchBox" placeholder="Search staff, ward or notes" oninput="renderWeekly()">
     <div class="formgrid" style="margin-bottom:12px">
       <div class="field"><label>Day</label>
@@ -115,14 +128,17 @@ textarea{min-height:86px;resize:vertical}
     <div id="allSickList"></div>
   </section>
 
-
-  <section id="staffView" class="hidden">
-    <div class="section-title"><h3>Staff List</h3><button class="btn primary" onclick="openStaffAdd()">+ Add Staff</button></div>
-    <input class="search" id="staffSearch" placeholder="Search staff name" oninput="renderStaff()">
-    <div id="staffList"></div>
-  </section>
-
   <section id="settingsView" class="hidden">
+    <div class="card">
+      <h3 style="margin-top:0">Access role</h3>
+      <p class="muted">Choose who is using this device. Sick-call management is available to leadership roles.</p>
+      <div class="field">
+        <label>Current user role</label>
+        <select id="accessRole" onchange="setAccessRole(this.value)">
+          <option>Team Leader</option><option>Manager</option><option>Supervisor</option><option>ESA</option><option>PSA</option><option>MIT A</option>
+        </select>
+      </div>
+    </div>
     <div class="card">
       <h3 style="margin-top:0">Backup & print</h3>
       <p class="muted">Your roster is saved on this device. Export a backup occasionally.</p>
@@ -145,7 +161,6 @@ textarea{min-height:86px;resize:vertical}
   <button id="navHome" class="active" onclick="go('home')"><strong>⌂</strong>Home</button>
   <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
   <button id="navSick" onclick="go('sick')"><strong>!</strong>Sick</button>
-  <button id="navStaff" onclick="go('staff')"><strong>👥</strong>Staff</button>
   <button id="navSet" onclick="go('settings')"><strong>⚙</strong>Settings</button>
 </nav>
 
@@ -156,67 +171,33 @@ textarea{min-height:86px;resize:vertical}
     <div class="formgrid">
       <div class="field"><label>Day</label><select id="fDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
       <div class="field"><label>Shift</label><select id="fShift" onchange="applyDefaults()"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
-      <div class="field full"><label>Staff name</label>
-        <input id="fName" list="staffNames" placeholder="Select or type staff name" onchange="applyStaffDefaults()">
-        <datalist id="staffNames"></datalist>
-      </div>
+      <div class="field full"><label>Staff name</label><input id="fName" placeholder="Staff name"></div>
+      <div class="field full"><label>Role</label><select id="fRole"><option>ESA</option><option>PSA</option><option>MIT A</option><option>Manager</option><option>Team Leader</option><option>Supervisor</option></select></div>
       <div class="field full"><label>Ward / Unit</label><input id="fWard" placeholder="Ward or unit"></div>
       <div class="field"><label>Start</label><input id="fStart" type="time"></div>
       <div class="field"><label>Finish</label><input id="fFinish" type="time"></div>
       <div class="field full"><label>Sick leave</label>
-        <select id="fLeave">
-          <option value="">No leave/status</option>
-          <option>Sick Leave - Full shift</option>
-          <option>Sick Leave - Part shift</option>
-          <option>Personal Leave</option>
-          <option>Annual Leave</option>
-          <option>RDO</option>
-          <option>Float / Relief</option>
-          <option>Overtime</option>
-          <option>No Show</option>
-        </select>
+        <select id="fLeave"><option value="">No sick leave</option><option>Full shift</option><option>Part shift</option><option>Personal leave</option></select>
       </div>
-      <div class="field full"><label><input id="fSickCall" type="checkbox" style="width:auto;margin-right:7px">Sick call</label></div>
-      <div class="field full"><label>Replacement staff</label><input id="fReplacement" placeholder="Replacement if required"></div>
+      <div class="field full"><label><input id="fSickCall" type="checkbox" style="width:auto;margin-right:7px" onchange="toggleSickFields()">Sick call</label></div>
+      <div id="sickFields" class="field full hidden">
+        <div class="card sick-summary" style="margin:0">
+          <h4>Sick-call details</h4>
+          <p id="sickPermissionNote" class="section-note"></p>
+          <div class="formgrid">
+            <div class="field"><label>Time reported</label><input id="fReportedTime" type="time"></div>
+            <div class="field"><label>Replacement status</label><select id="fReplacementStatus"><option>Needed</option><option>Contacted</option><option>Confirmed</option></select></div>
+            <div class="field full"><label>Reason / short note</label><input id="fSickReason" placeholder="Short operational note only"></div>
+            <div class="field full"><label>Replacement staff</label><input id="fReplacement" placeholder="Replacement name"></div>
+            <div class="field full"><label>Management notes</label><textarea id="fManagementNotes" placeholder="Follow-up or handover for leadership"></textarea></div>
+          </div>
+        </div>
+      </div>
       <div class="field full"><label>Notes</label><textarea id="fNotes" placeholder="Handover, leave details, changes or other notes"></textarea></div>
     </div>
     <div class="actions">
-      <button class="btn primary" onclick="saveEntry()">Save</button>
+      <button id="saveBtn" class="btn primary" onclick="saveEntry()">Save</button>
       <button id="deleteBtn" class="btn danger hidden" onclick="deleteEntry()">Delete</button>
-    </div>
-  </div>
-</div>
-
-<div id="staffModal" class="modal hidden" onclick="if(event.target===this) closeStaffModal()">
-  <div class="sheet">
-    <div class="sheethead"><h3 id="staffFormTitle">Add Staff</h3><button class="iconbtn" onclick="closeStaffModal()">×</button></div>
-    <input type="hidden" id="staffEditId">
-    <div class="formgrid">
-      <div class="field full"><label>Staff name</label><input id="sfName" placeholder="Staff name"></div>
-      <div class="field"><label>Staff type</label>
-        <select id="sfType"><option>Regular</option><option>Casual</option><option>Pool</option></select>
-      </div>
-      <div class="field"><label>Default ward / unit</label><select id="sfWard" onchange="toggleCustomWard()"><option value="">Select ward / unit</option><option value="PM Floater">PM Floater</option><option value="ED">ED</option><option value="ICU">ICU</option><option value="Imaging">Imaging</option><option value="Theatre">Theatre</option><option value="Ward A">Ward A</option><option value="Ward B">Ward B</option><option value="Ward C">Ward C</option><option value="Ward D">Ward D</option><option value="Ward E">Ward E</option><option value="Ward F">Ward F</option><option value="Ward G">Ward G</option><option value="Ward H">Ward H</option><option value="T2">T2</option><option value="T3">T3</option><option value="T4">T4</option><option value="T5">T5</option><option value="SCN">SCN</option><option value="Dialysis">Dialysis</option><option value="Imag/ED/Annex">Imag/ED/Annex</option><option value="Annex PM">Annex PM</option><option value="ED Fast Track">ED Fast Track</option><option value="Ward A/F ESA">Ward A/F ESA</option><option value="EPC Clyde North">EPC Clyde North</option><option value="Other / Custom Ward">Other / Custom Ward</option></select>
-      <div class="field full" id="customWardField" style="display:none">
-        <label>Custom ward / unit</label>
-        <input id="sfCustomWard" placeholder="Enter ward or unit">
-      </div></div>
-      <div class="field"><label>Default shift</label><select id="sfShift"><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
-      <div class="field"><label>Role</label><select id="sfRole" onchange="toggleOtherRole()">
-          <option value="">Select role</option>
-          <option>ESA</option>
-          <option>PSA</option>
-          <option>MIT Assistant</option>
-          <option>Team Leader</option>
-          <option>Supervisor</option>
-          <option>Manager</option>
-          <option>Other</option>
-        </select></div><div class="field full" id="otherRoleField" style="display:none"><label>Other role</label><input id="sfOtherRole" placeholder="Enter role"></div>
-      <div class="field full"><label>Staff notes</label><input id="sfStaffNotes" placeholder="Optional notes"></div>
-    </div>
-    <div class="actions">
-      <button class="btn primary" onclick="saveStaff()">Save Staff</button>
-      <button id="staffDeleteBtn" class="btn danger hidden" onclick="deleteStaff()">Delete</button>
     </div>
   </div>
 </div>
@@ -224,110 +205,21 @@ textarea{min-height:86px;resize:vertical}
 <script>
 const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 const DEFAULTS={AM:["07:00","15:30"],PM:["13:00","21:00"],Night:["21:00","07:30"],Custom:["",""]};
+const MANAGEMENT_ROLES=["Manager","Team Leader","Supervisor"];
 let entries=JSON.parse(localStorage.getItem("easyRosterPWA")||"[]");
-const DEFAULT_STAFF=[{"id": "seed1", "name": "Aarti G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed2", "name": "Abdalla D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed3", "name": "Alyssa E", "ward": "", "shift": "AM", "role": ""}, {"id": "seed4", "name": "Amy H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed5", "name": "Anne-Marie B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed6", "name": "Anthony", "ward": "", "shift": "AM", "role": ""}, {"id": "seed7", "name": "Anu J", "ward": "", "shift": "AM", "role": ""}, {"id": "seed8", "name": "Anu P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed9", "name": "Audrey D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed10", "name": "Baljeet W", "ward": "", "shift": "AM", "role": ""}, {"id": "seed11", "name": "Bill A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed12", "name": "Carol H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed13", "name": "Carol R", "ward": "", "shift": "AM", "role": ""}, {"id": "seed14", "name": "Cathy Farrow", "ward": "", "shift": "AM", "role": ""}, {"id": "seed15", "name": "Chanyalew D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed16", "name": "Christopher", "ward": "", "shift": "AM", "role": ""}, {"id": "seed17", "name": "Ciprian H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed18", "name": "Clara K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed19", "name": "Claudia G Burns", "ward": "", "shift": "AM", "role": ""}, {"id": "seed20", "name": "Claudia J", "ward": "", "shift": "AM", "role": ""}, {"id": "seed21", "name": "Colin D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed22", "name": "Coogi M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed23", "name": "Corine", "ward": "", "shift": "AM", "role": ""}, {"id": "seed24", "name": "Daniel G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed25", "name": "Danny G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed26", "name": "Dante A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed27", "name": "Dawth L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed28", "name": "Dayananda A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed29", "name": "Dean A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed30", "name": "Dennis U", "ward": "", "shift": "AM", "role": ""}, {"id": "seed31", "name": "Devangiben P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed32", "name": "Diji T", "ward": "", "shift": "AM", "role": ""}, {"id": "seed33", "name": "Dilba A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed34", "name": "Eddie S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed35", "name": "Edgardo S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed36", "name": "Elizabeth M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed37", "name": "Emere T", "ward": "", "shift": "AM", "role": ""}, {"id": "seed38", "name": "Eunyoung H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed39", "name": "Gagan D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed40", "name": "Gemma C", "ward": "", "shift": "AM", "role": ""}, {"id": "seed41", "name": "Geoff Mc", "ward": "", "shift": "AM", "role": ""}, {"id": "seed42", "name": "Grace B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed43", "name": "Gulnaz K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed44", "name": "Gurpreet K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed45", "name": "Hana Y", "ward": "", "shift": "AM", "role": ""}, {"id": "seed46", "name": "Hansel L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed47", "name": "Harpreet B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed48", "name": "Harpreet K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed49", "name": "Hawi B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed50", "name": "Hawii D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed51", "name": "Helena L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed52", "name": "Henry R", "ward": "", "shift": "AM", "role": ""}, {"id": "seed53", "name": "Inderjit K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed54", "name": "Irene D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed55", "name": "Jackie G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed56", "name": "Jackie J", "ward": "", "shift": "AM", "role": ""}, {"id": "seed57", "name": "Jacqueline H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed58", "name": "Jane W", "ward": "", "shift": "AM", "role": ""}, {"id": "seed59", "name": "Janelle A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed60", "name": "Jaspal S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed61", "name": "Jay (Wai Poh) L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed62", "name": "Jay I", "ward": "", "shift": "AM", "role": ""}, {"id": "seed63", "name": "Jaymini", "ward": "", "shift": "AM", "role": ""}, {"id": "seed64", "name": "Jayshree P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed65", "name": "Jejen M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed66", "name": "Jennie Harris", "ward": "", "shift": "AM", "role": ""}, {"id": "seed67", "name": "Jennifer R", "ward": "", "shift": "AM", "role": ""}, {"id": "seed68", "name": "Jenny Ch", "ward": "", "shift": "AM", "role": ""}, {"id": "seed69", "name": "Jenny K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed70", "name": "Jenny P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed71", "name": "Jessica P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed72", "name": "Jhay P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed73", "name": "Jim Cheen Ma", "ward": "", "shift": "AM", "role": ""}, {"id": "seed74", "name": "Jo N", "ward": "", "shift": "AM", "role": ""}, {"id": "seed75", "name": "Joan F", "ward": "", "shift": "AM", "role": ""}, {"id": "seed76", "name": "Joon P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed77", "name": "Josie Z", "ward": "", "shift": "AM", "role": ""}, {"id": "seed78", "name": "Judith A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed79", "name": "Julie S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed80", "name": "Julie-Anne B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed81", "name": "Jyotsana K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed82", "name": "Kamal P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed83", "name": "Kanwaljit K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed84", "name": "Kate D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed85", "name": "Katherine S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed86", "name": "Kathryn S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed87", "name": "Kavita", "ward": "", "shift": "AM", "role": ""}, {"id": "seed88", "name": "Kaye-Anne Q", "ward": "", "shift": "AM", "role": ""}, {"id": "seed89", "name": "Kelly K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed90", "name": "Kelvin", "ward": "", "shift": "AM", "role": ""}, {"id": "seed91", "name": "Kim F", "ward": "", "shift": "AM", "role": ""}, {"id": "seed92", "name": "Kim L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed93", "name": "Kinnari P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed94", "name": "Lala P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed95", "name": "Leanne Keith", "ward": "", "shift": "AM", "role": ""}, {"id": "seed96", "name": "Leanne V", "ward": "", "shift": "AM", "role": ""}, {"id": "seed97", "name": "Leo C", "ward": "", "shift": "AM", "role": ""}, {"id": "seed98", "name": "Linda D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed99", "name": "Lola", "ward": "", "shift": "AM", "role": ""}, {"id": "seed100", "name": "Lola K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed101", "name": "Louis Jean-Pierre", "ward": "", "shift": "AM", "role": ""}, {"id": "seed102", "name": "Lynn M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed103", "name": "Madhu P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed104", "name": "Mahalet T", "ward": "", "shift": "AM", "role": ""}, {"id": "seed105", "name": "Mandi A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed106", "name": "Maree", "ward": "", "shift": "AM", "role": ""}, {"id": "seed107", "name": "Marianne H", "ward": "", "shift": "AM", "role": ""}, {"id": "seed108", "name": "Melissa P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed109", "name": "Melvin M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed110", "name": "Mi Hwa P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed111", "name": "Mi J", "ward": "", "shift": "AM", "role": ""}, {"id": "seed112", "name": "Mi Jang", "ward": "", "shift": "AM", "role": ""}, {"id": "seed113", "name": "Miae Jang", "ward": "", "shift": "AM", "role": ""}, {"id": "seed114", "name": "Michael M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed115", "name": "Michelle K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed116", "name": "Michelle S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed117", "name": "Minsoo K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed118", "name": "Miriam U", "ward": "", "shift": "AM", "role": ""}, {"id": "seed119", "name": "Monique Allen", "ward": "", "shift": "AM", "role": ""}, {"id": "seed120", "name": "Moonie Jung", "ward": "", "shift": "AM", "role": ""}, {"id": "seed121", "name": "Nantana", "ward": "", "shift": "AM", "role": ""}, {"id": "seed122", "name": "Narelle Ritchie", "ward": "", "shift": "AM", "role": ""}, {"id": "seed123", "name": "Natalie", "ward": "", "shift": "AM", "role": ""}, {"id": "seed124", "name": "Navneet K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed125", "name": "Nefissa A", "ward": "", "shift": "AM", "role": ""}, {"id": "seed126", "name": "Neha S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed127", "name": "Nicole S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed128", "name": "Nimal D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed129", "name": "Nina C", "ward": "", "shift": "AM", "role": ""}, {"id": "seed130", "name": "Obsa S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed131", "name": "Olivia", "ward": "", "shift": "AM", "role": ""}, {"id": "seed132", "name": "Pankaj P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed133", "name": "Pardeep K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed134", "name": "Parveena P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed135", "name": "Patrick M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed136", "name": "Paulos G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed137", "name": "Pierre D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed138", "name": "Piyumi W", "ward": "", "shift": "AM", "role": ""}, {"id": "seed139", "name": "Piyush P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed140", "name": "Poonam K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed141", "name": "Pranav P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed142", "name": "Reena S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed143", "name": "Rimpal P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed144", "name": "Rosa C", "ward": "", "shift": "AM", "role": ""}, {"id": "seed145", "name": "Rosanne B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed146", "name": "Sam Algoda", "ward": "", "shift": "AM", "role": ""}, {"id": "seed147", "name": "Sandeep K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed148", "name": "Sandy L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed149", "name": "Sang L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed150", "name": "Sara G", "ward": "", "shift": "AM", "role": ""}, {"id": "seed151", "name": "Sasi P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed152", "name": "Sassikuran", "ward": "", "shift": "AM", "role": ""}, {"id": "seed153", "name": "Sena Homa", "ward": "", "shift": "AM", "role": ""}, {"id": "seed154", "name": "Sherin S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed155", "name": "Sheryl N", "ward": "", "shift": "AM", "role": ""}, {"id": "seed156", "name": "Shirley S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed157", "name": "Shradd P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed158", "name": "Subash S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed159", "name": "Sue Harper", "ward": "", "shift": "AM", "role": ""}, {"id": "seed160", "name": "Sulan D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed161", "name": "Sundeep D", "ward": "", "shift": "AM", "role": ""}, {"id": "seed162", "name": "Sung P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed163", "name": "Sweta P", "ward": "", "shift": "AM", "role": ""}, {"id": "seed164", "name": "Tarnjot K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed165", "name": "Terry Y", "ward": "", "shift": "AM", "role": ""}, {"id": "seed166", "name": "Thanh N", "ward": "", "shift": "AM", "role": ""}, {"id": "seed167", "name": "Tia Nyhuis", "ward": "", "shift": "AM", "role": ""}, {"id": "seed168", "name": "Tina Stewart", "ward": "", "shift": "AM", "role": ""}, {"id": "seed169", "name": "Tony T", "ward": "", "shift": "AM", "role": ""}, {"id": "seed170", "name": "Tracey B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed171", "name": "Tracey E", "ward": "", "shift": "AM", "role": ""}, {"id": "seed172", "name": "Travis", "ward": "", "shift": "AM", "role": ""}, {"id": "seed173", "name": "Trevor", "ward": "", "shift": "AM", "role": ""}, {"id": "seed174", "name": "Tulsi M", "ward": "", "shift": "AM", "role": ""}, {"id": "seed175", "name": "Vaani B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed176", "name": "Valbone S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed177", "name": "Valentina S", "ward": "", "shift": "AM", "role": ""}, {"id": "seed178", "name": "Vanessa W", "ward": "", "shift": "AM", "role": ""}, {"id": "seed179", "name": "Veronica B", "ward": "", "shift": "AM", "role": ""}, {"id": "seed180", "name": "Vibusha", "ward": "", "shift": "AM", "role": ""}, {"id": "seed181", "name": "Viliami", "ward": "", "shift": "AM", "role": ""}, {"id": "seed182", "name": "Wemmy W", "ward": "", "shift": "AM", "role": ""}, {"id": "seed183", "name": "Wendy", "ward": "", "shift": "AM", "role": ""}, {"id": "seed184", "name": "Young Eun L", "ward": "", "shift": "AM", "role": ""}, {"id": "seed185", "name": "Young K", "ward": "", "shift": "AM", "role": ""}, {"id": "seed186", "name": "Zo B", "ward": "", "shift": "AM", "role": ""}];
-let staff=JSON.parse(localStorage.getItem("easyRosterStaff")||"null");
-if(!Array.isArray(staff) || staff.length===0){
-  staff=DEFAULT_STAFF;
-  localStorage.setItem("easyRosterStaff",JSON.stringify(staff));
-}
-
-staff.forEach(s=>{if(!s.type)s.type="Regular";});
-localStorage.setItem("easyRosterStaff",JSON.stringify(staff));
+let accessRole=localStorage.getItem("easyRosterAccessRole")||"Team Leader";
 
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
 function save(){localStorage.setItem("easyRosterPWA",JSON.stringify(entries));}
-function saveStaffData(){localStorage.setItem("easyRosterStaff",JSON.stringify(staff));}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
 function cls(s){return s==="AM"?"am":s==="PM"?"pm":s==="Night"?"night":"custom";}
+function statusCls(s){return String(s||"Needed").toLowerCase();}
+function canManage(){return MANAGEMENT_ROLES.includes(accessRole);}
 function todayName(){return new Intl.DateTimeFormat("en-AU",{weekday:"long"}).format(new Date())}
 document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
+document.getElementById("accessRole").value=accessRole;
 
 function countShift(s){return entries.filter(e=>e.shift===s).length}
-
-function refreshStaffDatalist(){
-  const dl=document.getElementById("staffNames");
-  if(!dl)return;
-  dl.innerHTML=staff.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(s=>`<option value="${esc(s.name)}"></option>`).join("");
-}
-
-function toggleOtherRole(){
-  const field=document.getElementById("otherRoleField");
-  if(!field)return;
-  field.style.display=sfRole.value==="Other"?"flex":"none";
-  if(sfRole.value!=="Other")sfOtherRole.value="";
-}
-
-function toggleCustomWard(){
-  const field=document.getElementById("customWardField");
-  if(!field)return;
-  field.style.display=sfWard.value==="Other / Custom Ward"?"flex":"none";
-  if(sfWard.value!=="Other / Custom Ward")sfCustomWard.value="";
-}
-function renderStaff(){
-  const host=document.getElementById("staffList"); if(!host)return;
-  const q=(document.getElementById("staffSearch")?.value||"").toLowerCase();
-  const filtered=staff.filter(s=>!q||JSON.stringify(s).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name));
-  const regular=filtered.filter(s=>(s.type||"Regular")==="Regular");
-  const casual=filtered.filter(s=>s.type==="Casual");
-  const pool=filtered.filter(s=>s.type==="Pool");
-  const card=s=>`
-    <div class="card" onclick="editStaff('${s.id}')">
-      <div class="rowhead">
-        <div class="staffname">${esc(s.name)}</div>
-        <span class="badge ${s.type==="Casual"?"pm":s.type==="Pool"?"night":"am"}">${esc(s.type||"Regular")}</span>
-      </div>
-      <div class="meta">${esc(s.ward||"No default ward")}${s.shift?` • ${esc(s.shift)}`:""}${s.role?` • ${esc(s.role)}`:""}${s.staffNotes?` • ${esc(s.staffNotes)}`:""}</div>
-    </div>`;
-  host.innerHTML=`
-    <div class="section-title"><h3>Regular Staff</h3><span class="muted">${regular.length} staff</span></div>
-    ${regular.length?regular.map(card).join(""):'<div class="card muted">No regular staff found.</div>'}
-    <div class="section-title"><h3>Casual Staff</h3><span class="muted">${casual.length} staff</span></div>
-    ${casual.length?casual.map(card).join(""):'<div class="card muted">No casual staff added yet.</div>'}
-    <div class="section-title"><h3>Pool Staff</h3><span class="muted">${pool.length} staff</span></div>
-    ${pool.length?pool.map(card).join(""):'<div class="card muted">No pool staff added yet.</div>'}`;
-}
-function openStaffAdd(){
-  staffFormTitle.textContent="Add Staff";
-  staffEditId.value=""; sfName.value=""; sfType.value="Regular"; sfWard.value=""; sfCustomWard.value=""; sfShift.value="AM"; sfRole.value=""; sfOtherRole.value=""; sfStaffNotes.value=""; toggleCustomWard(); toggleOtherRole();
-  staffDeleteBtn.classList.add("hidden"); staffModal.classList.remove("hidden");
-}
-function editStaff(id){
-  const s=staff.find(x=>x.id===id); if(!s)return;
-  staffFormTitle.textContent="Edit Staff"; staffEditId.value=s.id;
-  sfName.value=s.name||""; sfType.value=s.type||"Regular";
-  const knownWards=["PM Floater", "ED", "ICU", "Imaging", "Theatre", "Ward A", "Ward B", "Ward C", "Ward D", "Ward E", "Ward F", "Ward G", "Ward H", "T2", "T3", "T4", "T5", "SCN", "Dialysis", "Imag/ED/Annex", "Annex PM", "ED Fast Track", "Ward A/F ESA", "EPC Clyde North"];
-  if(s.ward && !knownWards.includes(s.ward)){sfWard.value="Other / Custom Ward";sfCustomWard.value=s.ward;}else{sfWard.value=s.ward||"";sfCustomWard.value="";}
-  sfShift.value=s.shift||"AM"; toggleCustomWard();
-  const standardRoles=["ESA","PSA","MIT Assistant","Team Leader","Supervisor","Manager"];
-  if(s.role && !standardRoles.includes(s.role)){sfRole.value="Other";sfOtherRole.value=s.role;}else{sfRole.value=s.role||"";sfOtherRole.value="";}
-  sfStaffNotes.value=s.staffNotes||""; toggleOtherRole();
-  staffDeleteBtn.classList.remove("hidden"); staffModal.classList.remove("hidden");
-}
-function closeStaffModal(){staffModal.classList.add("hidden")}
-function saveStaff(){
-  const id=staffEditId.value;
-  const name=sfName.value.trim();
-  if(!name){alert("Please enter a staff name.");return;}
-  const chosenRole=sfRole.value==="Other"?sfOtherRole.value.trim():sfRole.value;
-  const chosenWard=sfWard.value==="Other / Custom Ward"?sfCustomWard.value.trim():sfWard.value;
-  const obj={id:id||uid(),name,type:sfType.value,ward:chosenWard,shift:sfShift.value,role:chosenRole,staffNotes:sfStaffNotes.value.trim()};
-  if(id){staff=staff.map(s=>s.id===id?obj:s)}else{staff.push(obj)}
-  saveStaffData(); refreshStaffDatalist(); renderStaff(); closeStaffModal();
-}
-function deleteStaff(){
-  const id=staffEditId.value;if(!id)return;
-  if(confirm("Delete this staff member from the saved Staff List? Existing roster entries will stay.")){
-    staff=staff.filter(s=>s.id!==id);saveStaffData();refreshStaffDatalist();renderStaff();closeStaffModal();
-  }
-}
-function applyStaffDefaults(){
-  const s=staff.find(x=>x.name===fName.value);
-  if(!s)return;
-  if(s.ward)fWard.value=s.ward;
-  if(s.shift){fShift.value=s.shift;applyDefaults();}
-}
-
 function renderHome(){
   document.getElementById("amCount").textContent=countShift("AM")+" staff";
   document.getElementById("pmCount").textContent=countShift("PM")+" staff";
@@ -339,13 +231,24 @@ function renderHome(){
   document.getElementById("recentList").innerHTML=entries.length?entries.slice(-5).reverse().map(entryCard).join(""):'<div class="card muted">Add your first roster entry using the + button.</div>';
 }
 function entryCard(e){
-  const alert=(e.sickCall||e.leave)?`<div class="meta alert">${e.sickCall?"Sick call":""}${e.sickCall&&e.leave?" • ":""}${esc(e.leave||"")}</div>`:"";
+  const sickDetails=e.sickCall?`<div class="meta alert">Sick call${e.reportedTime?` • Reported ${esc(e.reportedTime)}`:""}${e.sickReason?` • ${esc(e.sickReason)}`:""}</div>
+    <span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}</span>`:"";
+  const leave=(!e.sickCall&&e.leave)?`<div class="meta alert">${esc(e.leave)}</div>`:"";
+  const management=(canManage()&&e.managementNotes)?`<div class="meta"><strong>Management:</strong> ${esc(e.managementNotes)}</div>`:"";
   return `<div class="card" onclick="editEntry('${e.id}')">
     <div class="rowhead"><div><span class="badge ${cls(e.shift)}">${esc(e.shift)}</span> <strong>${esc(e.day)}</strong></div><span class="muted">${esc(e.start)}–${esc(e.finish)}</span></div>
-    <div class="staffname">${esc(e.name||"Unnamed staff")}</div>
-    <div class="meta">${esc(e.ward||"No ward/unit")}${e.replacement?` • Replacement: ${esc(e.replacement)}`:""}</div>
-    ${alert}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
+    <div class="staffline"><div><div class="staffname">${esc(e.name||"Unnamed staff")}</div>
+    <div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")}${e.replacement?` • Replacement: ${esc(e.replacement)}`:""}</div></div>
+    <button class="sickbtn ${e.sickCall?"active":""}" onclick="event.stopPropagation();openSick('${e.id}')">${e.sickCall?"Sick Call ✓":"Sick Call"}</button></div>
+    ${sickDetails}${leave}${management}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
   </div>`;
+}
+function renderPMSickSummary(){
+  const day=document.getElementById("dayFilter")?.value||"ALL";
+  const pmSick=entries.filter(e=>e.shift==="PM"&&e.sickCall&&(day==="ALL"||e.day===day));
+  const box=document.getElementById("pmSickSummary");
+  if(!pmSick.length){box.innerHTML='<div class="card"><strong>PM sick-call summary</strong><div class="meta">No PM sick calls recorded for this view.</div></div>';return;}
+  box.innerHTML=`<div class="card sick-summary"><h4>PM sick-call summary</h4>${pmSick.map(e=>`<div class="staffrow"><strong>${esc(e.day)}: ${esc(e.name||"Unnamed staff")}</strong><div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")} • ${esc(e.start)}–${esc(e.finish)}</div><span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}${e.replacement?` • ${esc(e.replacement)}`:""}</span></div>`).join("")}</div>`;
 }
 function renderWeekly(){
   let q=(document.getElementById("searchBox")?.value||"").toLowerCase();
@@ -354,18 +257,18 @@ function renderWeekly(){
   let list=entries.filter(e=>(day==="ALL"||e.day===day)&&(shift==="ALL"||e.shift===shift)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
   list.sort((a,b)=>DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||["AM","PM","Night","Custom"].indexOf(a.shift)-["AM","PM","Night","Custom"].indexOf(b.shift));
   document.getElementById("weeklyList").innerHTML=list.length?list.map(entryCard).join(""):'<div class="card muted">No roster entries match your filters.</div>';
+  renderPMSickSummary();
 }
 function renderSick(){
   const sick=entries.filter(e=>e.sickCall||e.leave);
   document.getElementById("allSickList").innerHTML=sick.length?sick.map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
 }
 function go(view){
-  ["homeView","weeklyView","sickView","staffView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
-  ["navHome","navWeek","navSick","navStaff","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  ["homeView","weeklyView","sickView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
   if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
   if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
   if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
-  if(view==="staff"){staffView.classList.remove("hidden");navStaff.classList.add("active");renderStaff();}
   if(view==="settings"){settingsView.classList.remove("hidden");navSet.classList.add("active");}
 }
 function showShift(s){go("week");document.getElementById("shiftFilter").value=s;renderWeekly();}
@@ -377,13 +280,19 @@ function openAdd(){
   document.getElementById("fDay").value=todayName();
   document.getElementById("fShift").value="AM";
   document.getElementById("fName").value="";
+  document.getElementById("fRole").value="PSA";
   document.getElementById("fWard").value="";
   document.getElementById("fLeave").value="";
   document.getElementById("fSickCall").checked=false;
+  document.getElementById("fReportedTime").value="";
+  document.getElementById("fSickReason").value="";
   document.getElementById("fReplacement").value="";
+  document.getElementById("fReplacementStatus").value="Needed";
+  document.getElementById("fManagementNotes").value="";
   document.getElementById("fNotes").value="";
   document.getElementById("deleteBtn").classList.add("hidden");
   applyDefaults();
+  toggleSickFields();
   modal.classList.remove("hidden");
 }
 function applyDefaults(){
@@ -395,16 +304,46 @@ function editEntry(id){
   document.getElementById("formTitle").textContent="Edit Staff";
   document.getElementById("editId").value=e.id;
   document.getElementById("fDay").value=e.day;document.getElementById("fShift").value=e.shift;
-  document.getElementById("fName").value=e.name;document.getElementById("fWard").value=e.ward;
+  document.getElementById("fName").value=e.name;document.getElementById("fRole").value=e.role||"PSA";document.getElementById("fWard").value=e.ward;
   document.getElementById("fStart").value=e.start;document.getElementById("fFinish").value=e.finish;
   document.getElementById("fLeave").value=e.leave||"";document.getElementById("fSickCall").checked=!!e.sickCall;
-  document.getElementById("fReplacement").value=e.replacement||"";document.getElementById("fNotes").value=e.notes||"";
-  document.getElementById("deleteBtn").classList.remove("hidden");modal.classList.remove("hidden");
+  document.getElementById("fReportedTime").value=e.reportedTime||"";document.getElementById("fSickReason").value=e.sickReason||"";
+  document.getElementById("fReplacement").value=e.replacement||"";document.getElementById("fReplacementStatus").value=e.replacementStatus||"Needed";
+  document.getElementById("fManagementNotes").value=e.managementNotes||"";document.getElementById("fNotes").value=e.notes||"";
+  document.getElementById("deleteBtn").classList.remove("hidden");toggleSickFields();modal.classList.remove("hidden");
+}
+function openSick(id){
+  if(!canManage()){alert("Sick-call updates are available to Manager, Team Leader and Supervisor roles.");return;}
+  editEntry(id);
+  document.getElementById("fSickCall").checked=true;
+  if(!document.getElementById("fReportedTime").value){document.getElementById("fReportedTime").value=new Date().toTimeString().slice(0,5);}
+  toggleSickFields();
+}
+function toggleSickFields(){
+  const active=document.getElementById("fSickCall").checked;
+  const allowed=canManage();
+  document.getElementById("sickFields").classList.toggle("hidden",!active);
+  ["fReportedTime","fSickReason","fReplacement","fReplacementStatus","fManagementNotes"].forEach(id=>document.getElementById(id).disabled=!allowed);
+  document.getElementById("fSickCall").disabled=!allowed;
+  document.getElementById("sickPermissionNote").textContent=allowed?`Updating as ${accessRole}.`:`View only. Change the access role to Manager, Team Leader or Supervisor to update these details.`;
+}
+function setAccessRole(role){
+  accessRole=role;localStorage.setItem("easyRosterAccessRole",role);
+  renderHome();renderWeekly();renderSick();
 }
 function closeModal(){modal.classList.add("hidden")}
 function saveEntry(){
   const id=document.getElementById("editId").value;
-  const obj={id:id||uid(),day:fDay.value,shift:fShift.value,name:fName.value.trim(),ward:fWard.value.trim(),start:fStart.value,finish:fFinish.value,leave:fLeave.value,sickCall:fSickCall.checked,replacement:fReplacement.value.trim(),notes:fNotes.value.trim()};
+  const existing=entries.find(e=>e.id===id);
+  const managed=canManage();
+  const obj={id:id||uid(),day:fDay.value,shift:fShift.value,name:fName.value.trim(),role:fRole.value,ward:fWard.value.trim(),start:fStart.value,finish:fFinish.value,leave:fLeave.value,
+    sickCall:managed?fSickCall.checked:!!existing?.sickCall,
+    reportedTime:managed?fReportedTime.value:(existing?.reportedTime||""),
+    sickReason:managed?fSickReason.value.trim():(existing?.sickReason||""),
+    replacement:managed?fReplacement.value.trim():(existing?.replacement||""),
+    replacementStatus:managed?fReplacementStatus.value:(existing?.replacementStatus||"Needed"),
+    managementNotes:managed?fManagementNotes.value.trim():(existing?.managementNotes||""),notes:fNotes.value.trim()};
+  if(!obj.name){alert("Please enter the staff name.");return;}
   if(id){entries=entries.map(e=>e.id===id?obj:e)}else{entries.push(obj)}
   save();closeModal();renderHome();renderWeekly();renderSick();
 }
@@ -414,15 +353,14 @@ function deleteEntry(){
 }
 function clearAll(){if(confirm("Clear all roster data from this device?")){entries=[];save();renderHome();renderWeekly();renderSick();}}
 function exportData(){
-  const blob=new Blob([JSON.stringify({entries,staff},null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="easy-roster-backup.json";a.click();URL.revokeObjectURL(a.href);
 }
 function importData(ev){
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{const imported=JSON.parse(r.result);if(Array.isArray(imported)){entries=imported;}else{entries=imported.entries||[];staff=imported.staff||[];}save();saveStaffData();refreshStaffDatalist();renderHome();renderWeekly();renderSick();renderStaff();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
+  r.onload=()=>{try{entries=JSON.parse(r.result);save();renderHome();renderWeekly();renderSick();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
   r.readAsText(f);
 }
-refreshStaffDatalist();
 renderHome();
 if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
 </script>
