@@ -286,7 +286,22 @@ function addPhotoRoster(existing){
   localStorage.setItem("easyRosterPWA",JSON.stringify(list));
   return list;
 }
-let entries=addPhotoRoster(addPermanentRoster(loadEntries()));
+function applyStaffNameCorrections(existing){
+  const marker="easyRosterStaffCorrections202609V1";
+  if(localStorage.getItem(marker))return existing;
+  const list=Array.isArray(existing)?existing:[];
+  let changed=false;
+  list.forEach(entry=>{
+    if(String(entry.name||"").trim().toLowerCase()==="aphiny"){
+      entry.name="Anthony Cooper";
+      changed=true;
+    }
+  });
+  localStorage.setItem(marker,"yes");
+  if(changed)localStorage.setItem("easyRosterPWA",JSON.stringify(list));
+  return list;
+}
+let entries=applyStaffNameCorrections(addPhotoRoster(addPermanentRoster(loadEntries())));
 let accessRole=localStorage.getItem("easyRosterAccessRole")||"Team Leader";
 
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
