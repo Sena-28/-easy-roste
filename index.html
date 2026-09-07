@@ -303,12 +303,13 @@ function countShift(s){return entries.filter(e=>e.shift===s).length}
 function areaGroup(ward){
   const area=String(ward||"").trim().toLowerCase();
   if(area.startsWith("emergency")||area.startsWith("ed ")||area.includes("ed fast track")||area.includes("annex")||area.includes("/ed"))return {order:0,label:"ED, Annex & Fast Track"};
-  if(area.includes("theatre")||area.startsWith("dsu"))return {order:1,label:"Theatre & DSU"};
-  if(area.includes("imaging"))return {order:2,label:"Imaging"};
-  if(/^ward [a-h](\b|\/)/.test(area))return {order:3,label:"Wards A to H"};
-  if(/^tower [2-5]\b/.test(area)||/^t[2-5]\b/.test(area))return {order:4,label:"Towers 2 to 5"};
-  if(area.includes("floater"))return {order:5,label:"Floaters"};
-  return {order:6,label:"Other areas"};
+  if(area.startsWith("icu"))return {order:1,label:"ICU"};
+  if(area.includes("theatre")||area.startsWith("dsu"))return {order:2,label:"Theatre & DSU"};
+  if(area.includes("imaging"))return {order:3,label:"Imaging"};
+  if(/^ward [a-h](\b|\/)/.test(area))return {order:4,label:"Wards A to H"};
+  if(/^tower [2-5]\b/.test(area)||/^t[2-5]\b/.test(area))return {order:5,label:"Towers 2 to 5"};
+  if(area.includes("floater"))return {order:6,label:"Floaters"};
+  return {order:7,label:"Other areas"};
 }
 function weeklySort(a,b){
   const ga=areaGroup(a.ward),gb=areaGroup(b.ward);
