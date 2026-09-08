@@ -49,11 +49,25 @@ main{max-width:900px;margin:auto;padding:16px}
 .staffline>div{min-width:0}
 .sickbtn{flex:0 0 auto;border:0;border-radius:10px;padding:8px 10px;background:#fde8e8;color:var(--red);font-size:12px;font-weight:800}
 .sickbtn.active{background:var(--red);color:#fff}
+.sickbtn.active.annual{background:var(--blue)}
+.sickbtn.active.lsl{background:var(--purple)}
+.sickbtn.active.workcover{background:var(--orange)}
+.sickbtn.active.other{background:#66788a}
 .status{display:inline-flex;align-items:center;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;margin-top:7px}
 .status.needed{background:#fde8e8;color:var(--red)}
 .status.contacted{background:#fff0df;color:var(--orange)}
 .status.confirmed{background:#e8f7ee;color:var(--green)}
+.leave-tag{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:800;margin-top:7px}
+.leave-tag.sick{background:#fde8e8;color:var(--red)}
+.leave-tag.annual{background:#e6f0fb;color:var(--blue)}
+.leave-tag.lsl{background:#eee9fb;color:var(--purple)}
+.leave-tag.workcover{background:#fff0df;color:var(--orange)}
+.leave-tag.other{background:#edf1f5;color:#52677d}
+.report-section{border-top:1px solid #edf1f5;padding-top:9px;margin-top:9px}
+.report-section strong{display:block;margin-bottom:3px}
+.report-text{font-size:13px;line-height:1.4;white-space:pre-wrap}
 .sick-summary{border-left:5px solid var(--red)}
+.absence-summary{border-left:5px solid var(--blue)}
 .sick-summary h4{margin:0 0 6px}
 .section-note{margin:-4px 0 12px;color:var(--muted);font-size:12px}
 .btn{border:0;border-radius:12px;padding:10px 12px;font-weight:700}
@@ -80,7 +94,7 @@ textarea{min-height:86px;resize:vertical}
 .bottomnav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
   border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  display:grid;grid-template-columns:repeat(4,1fr)
+  display:grid;grid-template-columns:repeat(5,1fr)
 }
 .bottomnav button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px}
 .bottomnav button strong{display:block;font-size:20px;line-height:1.1;margin-bottom:2px}.bottomnav button.active{color:var(--navy)}
@@ -116,7 +130,7 @@ textarea{min-height:86px;resize:vertical}
     </div>
     <div id="staffSearchResults" class="card muted">Enter a staff name to see their day, area and time.</div>
 
-    <div class="section-title"><h3>Sick calls & leave</h3><span class="muted" id="sickCount">0 entries</span></div>
+    <div class="section-title"><h3>Absences & leave</h3><span class="muted" id="sickCount">0 entries</span></div>
     <div id="sickList"></div>
 
     <div class="section-title"><h3>Recent roster entries</h3><button class="btn secondary" onclick="showWeekly()">View all</button></div>
@@ -141,14 +155,21 @@ textarea{min-height:86px;resize:vertical}
   </section>
 
   <section id="sickView" class="hidden">
-    <div class="section-title"><h3>Sick Calls & Leave</h3></div>
+    <div class="section-title"><h3>Absences & Leave</h3></div>
+    <p class="section-note">Sick, annual leave, long service leave, WorkCover and other leave.</p>
     <div id="allSickList"></div>
+  </section>
+
+  <section id="reportView" class="hidden">
+    <div class="section-title"><h3>Shift Reports</h3><button class="btn primary" onclick="openReport()">+ New Report</button></div>
+    <p class="section-note">Detailed reports for staffing, incidents, cleaning, maintenance and handover.</p>
+    <div id="reportList"></div>
   </section>
 
   <section id="settingsView" class="hidden">
     <div class="card">
       <h3 style="margin-top:0">Access role</h3>
-      <p class="muted">Choose who is using this device. Sick-call management is available to leadership roles.</p>
+      <p class="muted">Choose who is using this device. Absence and shift-report updates are available to leadership roles.</p>
       <div class="field">
         <label>Current user role</label>
         <select id="accessRole" onchange="setAccessRole(this.value)">
@@ -167,8 +188,13 @@ textarea{min-height:86px;resize:vertical}
       </div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0">Shift report email</h3>
+      <p class="muted">Optional. Reports can still be emailed without saving an address here.</p>
+      <div class="field"><label>Default email address</label><input id="reportEmail" type="email" placeholder="manager@example.com" onchange="setReportEmail(this.value)"></div>
+    </div>
+    <div class="card">
       <h3 style="margin-top:0">Reset</h3>
-      <p class="muted">This removes all roster entries from this device.</p>
+      <p class="muted">This removes roster entries and shift reports from this device.</p>
       <button class="btn danger" onclick="clearAll()">Clear All Data</button>
     </div>
   </section>
@@ -177,7 +203,8 @@ textarea{min-height:86px;resize:vertical}
 <nav class="bottomnav">
   <button id="navHome" class="active" onclick="go('home')"><strong>⌂</strong>Home</button>
   <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
-  <button id="navSick" onclick="go('sick')"><strong>!</strong>Sick</button>
+  <button id="navSick" onclick="go('sick')"><strong>!</strong>Leave</button>
+  <button id="navReport" onclick="go('report')"><strong>≡</strong>Reports</button>
   <button id="navSet" onclick="go('settings')"><strong>⚙</strong>Settings</button>
 </nav>
 
@@ -193,18 +220,22 @@ textarea{min-height:86px;resize:vertical}
       <div class="field full"><label>Ward / Unit</label><input id="fWard" placeholder="Ward or unit"></div>
       <div class="field"><label>Start</label><input id="fStart" type="time"></div>
       <div class="field"><label>Finish</label><input id="fFinish" type="time"></div>
-      <div class="field full"><label>Sick leave</label>
-        <select id="fLeave"><option value="">No sick leave</option><option>Full shift</option><option>Part shift</option><option>Personal leave</option></select>
+      <div class="field full"><label>Absence / leave</label>
+        <select id="fAbsenceType" onchange="toggleAbsenceFields()"><option value="">No absence</option><option>Sick</option><option>Annual Leave</option><option>Other</option></select>
       </div>
-      <div class="field full"><label><input id="fSickCall" type="checkbox" style="width:auto;margin-right:7px" onchange="toggleSickFields()">Sick call</label></div>
+      <div id="otherLeaveWrap" class="field full hidden"><label>Other leave type</label>
+        <select id="fOtherLeaveType"><option>Long Service Leave (LSL)</option><option>WorkCover</option><option>Other Leave</option></select>
+      </div>
       <div id="sickFields" class="field full hidden">
-        <div class="card sick-summary" style="margin:0">
-          <h4>Sick-call details</h4>
+        <div class="card absence-summary" style="margin:0">
+          <h4>Absence details</h4>
           <p id="sickPermissionNote" class="section-note"></p>
           <div class="formgrid">
-            <div class="field"><label>Time reported</label><input id="fReportedTime" type="time"></div>
+            <div id="sickOnlyFields" class="field"><label>Time sick call reported</label><input id="fReportedTime" type="time"></div>
             <div class="field"><label>Replacement status</label><select id="fReplacementStatus"><option>Needed</option><option>Contacted</option><option>Confirmed</option></select></div>
-            <div class="field full"><label>Reason / short note</label><input id="fSickReason" placeholder="Short operational note only"></div>
+            <div class="field"><label>Leave starts</label><input id="fLeaveStart" type="date"></div>
+            <div class="field"><label>Expected return</label><input id="fLeaveEnd" type="date"></div>
+            <div id="sickReasonWrap" class="field full"><label>Sick-call short note</label><input id="fSickReason" placeholder="Short operational note only"></div>
             <div class="field full"><label>Replacement staff</label><input id="fReplacement" placeholder="Replacement name"></div>
             <div class="field full"><label>Management notes</label><textarea id="fManagementNotes" placeholder="Follow-up or handover for leadership"></textarea></div>
           </div>
@@ -215,6 +246,39 @@ textarea{min-height:86px;resize:vertical}
     <div class="actions">
       <button id="saveBtn" class="btn primary" onclick="saveEntry()">Save</button>
       <button id="deleteBtn" class="btn danger hidden" onclick="deleteEntry()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="reportModal" class="modal hidden" onclick="if(event.target===this) closeReportModal()">
+  <div class="sheet">
+    <div class="sheethead"><h3 id="reportFormTitle">New Shift Report</h3><button class="iconbtn" onclick="closeReportModal()">×</button></div>
+    <input type="hidden" id="editReportId">
+    <div class="formgrid">
+      <div class="field"><label>Date</label><input id="rDate" type="date"></div>
+      <div class="field"><label>Shift</label><select id="rShift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+      <div class="field full"><label>Name</label><input id="rLeader" placeholder="Team Leader or Supervisor name"></div>
+      <div class="field"><label>First site round</label><select id="rRound1"><option>Completed</option><option>Not completed</option><option>Not applicable</option></select></div>
+      <div class="field"><label>Second site round</label><select id="rRound2"><option>Completed</option><option>Not completed</option><option>Not applicable</option></select></div>
+      <div class="field full"><label>If a site round was not completed, note the reason</label><input id="rRoundReason" placeholder="Reason"></div>
+      <div class="field"><label>Cleaning equipment room door closed?</label><select id="rEquipmentDoor"><option>Yes</option><option>No</option><option>Not checked</option></select></div>
+      <div class="field"><label>Waste handling room door closed?</label><select id="rWasteDoor"><option>Yes</option><option>No</option><option>Not checked</option></select></div>
+      <div class="field"><label>Warragul linen room door closed?</label><select id="rLinenDoor"><option>Yes</option><option>No</option><option>Not checked</option></select></div>
+      <div class="field"><label>Waste-room linen trolleys stacked properly?</label><select id="rTrolleys"><option>Yes</option><option>No</option><option>Not checked</option></select></div>
+      <div class="field full"><label>Shift comments and significant issues</label><textarea id="rShiftComments" placeholder="Important issues and anything the next shift should know"></textarea></div>
+      <div class="field full"><label>Roster & UKG issues</label><textarea id="rRosterUKG" placeholder="Shift, reason, who covered and whether UKG was updated"></textarea></div>
+      <div class="field full"><label>Fluoro, discharge and patient-experience audits</label><textarea id="rAudits" placeholder="Audits completed and follow-up required"></textarea></div>
+      <div class="field full"><label>Ward requests and internal transfers</label><textarea id="rWardRequests" placeholder="Requests, transfers and outstanding actions"></textarea></div>
+      <div class="field full"><label>Linen</label><textarea id="rLinen" placeholder="Stock levels, Warragul linen communication and discrepancies"></textarea></div>
+      <div class="field full"><label>Waste management</label><textarea id="rWaste" placeholder="Skip bins, clinical waste bins and outstanding issues"></textarea></div>
+      <div class="field full"><label>Repairs and maintenance requests</label><textarea id="rRepairs" placeholder="Faults, job numbers and follow-up"></textarea></div>
+      <div class="field full"><label>Safety issues raised</label><textarea id="rSafety" placeholder="Safety issue and action taken. Do not include private patient details."></textarea></div>
+      <div class="field full"><label>RiskMan entries and injuries</label><textarea id="rRiskman" placeholder="Record follow-up. Triage: 1800 264 368. EAP: 1300 687 327. Do not include private patient details."></textarea></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="saveReport()">Save Report</button>
+      <button class="btn secondary" onclick="saveReport(true)">Save & Email</button>
+      <button id="deleteReportBtn" class="btn danger hidden" onclick="deleteReport()">Delete</button>
     </div>
   </div>
 </div>
@@ -303,9 +367,13 @@ function applyStaffNameCorrections(existing){
 }
 let entries=applyStaffNameCorrections(addPhotoRoster(addPermanentRoster(loadEntries())));
 let accessRole=localStorage.getItem("easyRosterAccessRole")||"Team Leader";
+let reports=loadReports();
+let reportEmailAddress=localStorage.getItem("easyRosterReportEmail")||"";
 
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
 function save(){localStorage.setItem("easyRosterPWA",JSON.stringify(entries));}
+function loadReports(){try{const saved=JSON.parse(localStorage.getItem("easyRosterShiftReports")||"[]");return Array.isArray(saved)?saved:[]}catch{return []}}
+function saveReports(){localStorage.setItem("easyRosterShiftReports",JSON.stringify(reports));}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
 function cls(s){return s==="AM"?"am":s==="PM"?"pm":s==="Night"?"night":"custom";}
 function statusCls(s){return String(s||"Needed").toLowerCase();}
@@ -313,8 +381,28 @@ function canManage(){return MANAGEMENT_ROLES.includes(accessRole);}
 function todayName(){return new Intl.DateTimeFormat("en-AU",{weekday:"long"}).format(new Date())}
 document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
 document.getElementById("accessRole").value=accessRole;
+document.getElementById("reportEmail").value=reportEmailAddress;
 
 function countShift(s){return entries.filter(e=>e.shift===s).length}
+function absenceTypeOf(e){
+  if(e.absenceType)return e.absenceType;
+  if(e.sickCall||e.leave)return "Sick";
+  return "";
+}
+function absenceLabel(e){
+  const type=absenceTypeOf(e);
+  if(type==="Other")return e.otherLeaveType||"Other Leave";
+  return type;
+}
+function absenceClass(e){
+  const label=absenceLabel(e).toLowerCase();
+  if(label==="sick")return "sick";
+  if(label.includes("annual"))return "annual";
+  if(label.includes("long service")||label.includes("lsl"))return "lsl";
+  if(label.includes("workcover"))return "workcover";
+  return "other";
+}
+function hasAbsence(e){return !!absenceTypeOf(e)}
 function areaGroup(ward){
   const area=String(ward||"").trim().toLowerCase();
   if(area.startsWith("emergency")||area.startsWith("ed ")||area.includes("ed fast track")||area.includes("annex")||area.includes("/ed"))return {order:0,label:"ED, Annex & Fast Track"};
@@ -369,28 +457,30 @@ function renderHome(){
   document.getElementById("pmCount").textContent=countShift("PM")+" staff";
   document.getElementById("nightCount").textContent=countShift("Night")+" staff";
   document.getElementById("heroSummary").textContent=photoRosterCount?`Updated weekly roster loaded with ${photoRosterCount} staff entries.`:(permanentStaffCount?`Permanent Monday-Sunday roster restored with ${permanentStaffCount} entries.`:(recoveredStaffCount?`${recoveredStaffCount} previous staff entries recovered.`:(entries.length?`${entries.length} roster entries saved on this device.`:"No staff added yet.")));
-  const sick=entries.filter(e=>e.sickCall||e.leave);
+  const sick=entries.filter(hasAbsence);
   document.getElementById("sickCount").textContent=sick.length+" entries";
-  document.getElementById("sickList").innerHTML=sick.length?sick.slice(-4).reverse().map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
+  document.getElementById("sickList").innerHTML=sick.length?sick.slice(-4).reverse().map(entryCard).join(""):'<div class="card muted">No absences or leave recorded.</div>';
   document.getElementById("recentList").innerHTML=entries.length?entries.slice(-5).reverse().map(entryCard).join(""):'<div class="card muted">Add your first roster entry using the + button.</div>';
   renderStaffSearch();
 }
 function entryCard(e){
-  const sickDetails=e.sickCall?`<div class="meta alert">Sick call${e.reportedTime?` • Reported ${esc(e.reportedTime)}`:""}${e.sickReason?` • ${esc(e.sickReason)}`:""}</div>
+  const absence=hasAbsence(e);
+  const label=absenceLabel(e);
+  const absenceDetails=absence?`<span class="leave-tag ${absenceClass(e)}">${esc(label)}</span>${label==="Sick"&&e.reportedTime?`<div class="meta alert">Reported ${esc(e.reportedTime)}${e.sickReason?` • ${esc(e.sickReason)}`:""}</div>`:""}
+    ${(e.leaveStart||e.leaveEnd)?`<div class="meta">${e.leaveStart?`From ${esc(e.leaveStart)}`:""}${e.leaveEnd?` • Return ${esc(e.leaveEnd)}`:""}</div>`:""}
     <span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}</span>`:"";
-  const leave=(!e.sickCall&&e.leave)?`<div class="meta alert">${esc(e.leave)}</div>`:"";
   const management=(canManage()&&e.managementNotes)?`<div class="meta"><strong>Management:</strong> ${esc(e.managementNotes)}</div>`:"";
   return `<div class="card" onclick="editEntry('${e.id}')">
     <div class="rowhead"><div><span class="badge ${cls(e.shift)}">${esc(e.shift)}</span> <strong>${esc(e.day)}</strong></div><span class="muted">${esc(e.start)}–${esc(e.finish)}</span></div>
     <div class="staffline"><div><div class="staffname">${esc(e.name||"Unnamed staff")}</div>
     <div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")}${e.replacement?` • Replacement: ${esc(e.replacement)}`:""}</div></div>
-    <button class="sickbtn ${e.sickCall?"active":""}" onclick="event.stopPropagation();openSick('${e.id}')">${e.sickCall?"Sick Call ✓":"Sick Call"}</button></div>
-    ${sickDetails}${leave}${management}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
+    <button class="sickbtn ${absence?"active "+absenceClass(e):""}" onclick="event.stopPropagation();openAbsence('${e.id}')">${absence?esc(label)+" ✓":"Add Leave"}</button></div>
+    ${absenceDetails}${management}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
   </div>`;
 }
 function renderPMSickSummary(){
   const day=document.getElementById("dayFilter")?.value||"ALL";
-  const pmSick=entries.filter(e=>e.shift==="PM"&&e.sickCall&&(day==="ALL"||e.day===day));
+  const pmSick=entries.filter(e=>e.shift==="PM"&&absenceTypeOf(e)==="Sick"&&(day==="ALL"||e.day===day));
   const box=document.getElementById("pmSickSummary");
   if(!pmSick.length){box.innerHTML='<div class="card"><strong>PM sick-call summary</strong><div class="meta">No PM sick calls recorded for this view.</div></div>';return;}
   box.innerHTML=`<div class="card sick-summary"><h4>PM sick-call summary</h4>${pmSick.map(e=>`<div class="staffrow"><strong>${esc(e.day)}: ${esc(e.name||"Unnamed staff")}</strong><div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")} • ${esc(e.start)}–${esc(e.finish)}</div><span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}${e.replacement?` • ${esc(e.replacement)}`:""}</span></div>`).join("")}</div>`;
@@ -405,15 +495,16 @@ function renderWeekly(){
   renderPMSickSummary();
 }
 function renderSick(){
-  const sick=entries.filter(e=>e.sickCall||e.leave);
-  document.getElementById("allSickList").innerHTML=sick.length?sick.map(entryCard).join(""):'<div class="card muted">No sick calls or leave recorded.</div>';
+  const sick=entries.filter(hasAbsence);
+  document.getElementById("allSickList").innerHTML=sick.length?sick.map(entryCard).join(""):'<div class="card muted">No absences or leave recorded.</div>';
 }
 function go(view){
-  ["homeView","weeklyView","sickView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
-  ["navHome","navWeek","navSick","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  ["homeView","weeklyView","sickView","reportView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navReport","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
   if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
   if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
   if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
+  if(view==="report"){reportView.classList.remove("hidden");navReport.classList.add("active");renderReports();}
   if(view==="settings"){settingsView.classList.remove("hidden");navSet.classList.add("active");}
 }
 function showShift(s){go("week");document.getElementById("shiftFilter").value=s;renderWeekly();}
@@ -427,8 +518,10 @@ function openAdd(){
   document.getElementById("fName").value="";
   document.getElementById("fRole").value="PSA";
   document.getElementById("fWard").value="";
-  document.getElementById("fLeave").value="";
-  document.getElementById("fSickCall").checked=false;
+  document.getElementById("fAbsenceType").value="";
+  document.getElementById("fOtherLeaveType").value="Long Service Leave (LSL)";
+  document.getElementById("fLeaveStart").value="";
+  document.getElementById("fLeaveEnd").value="";
   document.getElementById("fReportedTime").value="";
   document.getElementById("fSickReason").value="";
   document.getElementById("fReplacement").value="";
@@ -437,7 +530,7 @@ function openAdd(){
   document.getElementById("fNotes").value="";
   document.getElementById("deleteBtn").classList.add("hidden");
   applyDefaults();
-  toggleSickFields();
+  toggleAbsenceFields();
   modal.classList.remove("hidden");
 }
 function applyDefaults(){
@@ -451,38 +544,45 @@ function editEntry(id){
   document.getElementById("fDay").value=e.day;document.getElementById("fShift").value=e.shift;
   document.getElementById("fName").value=e.name;document.getElementById("fRole").value=e.role||"PSA";document.getElementById("fWard").value=e.ward;
   document.getElementById("fStart").value=e.start;document.getElementById("fFinish").value=e.finish;
-  document.getElementById("fLeave").value=e.leave||"";document.getElementById("fSickCall").checked=!!e.sickCall;
+  document.getElementById("fAbsenceType").value=absenceTypeOf(e);document.getElementById("fOtherLeaveType").value=e.otherLeaveType||"Long Service Leave (LSL)";
+  document.getElementById("fLeaveStart").value=e.leaveStart||"";document.getElementById("fLeaveEnd").value=e.leaveEnd||"";
   document.getElementById("fReportedTime").value=e.reportedTime||"";document.getElementById("fSickReason").value=e.sickReason||"";
   document.getElementById("fReplacement").value=e.replacement||"";document.getElementById("fReplacementStatus").value=e.replacementStatus||"Needed";
   document.getElementById("fManagementNotes").value=e.managementNotes||"";document.getElementById("fNotes").value=e.notes||"";
-  document.getElementById("deleteBtn").classList.remove("hidden");toggleSickFields();modal.classList.remove("hidden");
+  document.getElementById("deleteBtn").classList.remove("hidden");toggleAbsenceFields();modal.classList.remove("hidden");
 }
-function openSick(id){
-  if(!canManage()){alert("Sick-call updates are available to Manager, Team Leader and Supervisor roles.");return;}
+function openAbsence(id){
+  if(!canManage()){alert("Absence updates are available to Manager, Team Leader and Supervisor roles.");return;}
   editEntry(id);
-  document.getElementById("fSickCall").checked=true;
-  if(!document.getElementById("fReportedTime").value){document.getElementById("fReportedTime").value=new Date().toTimeString().slice(0,5);}
-  toggleSickFields();
+  if(!document.getElementById("fAbsenceType").value)document.getElementById("fAbsenceType").value="Sick";
+  if(document.getElementById("fAbsenceType").value==="Sick"&&!document.getElementById("fReportedTime").value)document.getElementById("fReportedTime").value=new Date().toTimeString().slice(0,5);
+  toggleAbsenceFields();
 }
-function toggleSickFields(){
-  const active=document.getElementById("fSickCall").checked;
+function toggleAbsenceFields(){
+  const type=document.getElementById("fAbsenceType").value;
+  const active=!!type;
   const allowed=canManage();
   document.getElementById("sickFields").classList.toggle("hidden",!active);
-  ["fReportedTime","fSickReason","fReplacement","fReplacementStatus","fManagementNotes"].forEach(id=>document.getElementById(id).disabled=!allowed);
-  document.getElementById("fSickCall").disabled=!allowed;
+  document.getElementById("otherLeaveWrap").classList.toggle("hidden",type!=="Other");
+  document.getElementById("sickOnlyFields").classList.toggle("hidden",type!=="Sick");
+  document.getElementById("sickReasonWrap").classList.toggle("hidden",type!=="Sick");
+  ["fAbsenceType","fOtherLeaveType","fReportedTime","fSickReason","fLeaveStart","fLeaveEnd","fReplacement","fReplacementStatus","fManagementNotes"].forEach(id=>document.getElementById(id).disabled=!allowed);
   document.getElementById("sickPermissionNote").textContent=allowed?`Updating as ${accessRole}.`:`View only. Change the access role to Manager, Team Leader or Supervisor to update these details.`;
 }
 function setAccessRole(role){
   accessRole=role;localStorage.setItem("easyRosterAccessRole",role);
-  renderHome();renderWeekly();renderSick();
+  renderHome();renderWeekly();renderSick();renderReports();
 }
 function closeModal(){modal.classList.add("hidden")}
 function saveEntry(){
   const id=document.getElementById("editId").value;
   const existing=entries.find(e=>e.id===id);
   const managed=canManage();
-  const obj={id:id||uid(),day:fDay.value,shift:fShift.value,name:fName.value.trim(),role:fRole.value,ward:fWard.value.trim(),start:fStart.value,finish:fFinish.value,leave:fLeave.value,
-    sickCall:managed?fSickCall.checked:!!existing?.sickCall,
+  const selectedType=managed?fAbsenceType.value:absenceTypeOf(existing||{});
+  const obj={id:id||uid(),day:fDay.value,shift:fShift.value,name:fName.value.trim(),role:fRole.value,ward:fWard.value.trim(),start:fStart.value,finish:fFinish.value,
+    absenceType:selectedType,otherLeaveType:managed?fOtherLeaveType.value:(existing?.otherLeaveType||""),
+    leaveStart:managed?fLeaveStart.value:(existing?.leaveStart||""),leaveEnd:managed?fLeaveEnd.value:(existing?.leaveEnd||""),
+    leave:selectedType,sickCall:selectedType==="Sick",
     reportedTime:managed?fReportedTime.value:(existing?.reportedTime||""),
     sickReason:managed?fSickReason.value.trim():(existing?.sickReason||""),
     replacement:managed?fReplacement.value.trim():(existing?.replacement||""),
@@ -496,14 +596,73 @@ function deleteEntry(){
   const id=document.getElementById("editId").value;if(!id)return;
   if(confirm("Delete this roster entry?")){entries=entries.filter(e=>e.id!==id);save();closeModal();renderHome();renderWeekly();renderSick();}
 }
-function clearAll(){if(confirm("Clear all roster data from this device?")){entries=[];save();renderHome();renderWeekly();renderSick();}}
+function localDateValue(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function formatReportDate(value){if(!value)return "Date not set";return new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(new Date(value+"T00:00:00"))}
+function reportSection(title,value){return value?`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value)}</div></div>`:""}
+function reportCard(r){
+  return `<div class="card">
+    <div class="rowhead"><div><span class="badge ${cls(r.shift)}">${esc(r.shift)}</span> <strong>${esc(formatReportDate(r.date))}</strong></div><div class="actions" style="margin:0"><button class="btn secondary" onclick="emailReport('${r.id}')">Email</button>${canManage()?`<button class="btn secondary" onclick="editReport('${r.id}')">Edit</button>`:""}</div></div>
+    <div class="meta"><strong>Name:</strong> ${esc(r.leader||"Not recorded")}</div>
+    <div class="report-section"><strong>Checks</strong><div class="report-text">Site rounds: 1st ${esc(r.round1||"Not recorded")}, 2nd ${esc(r.round2||"Not recorded")}<br>Equipment room door: ${esc(r.equipmentDoor||"Not recorded")} • Waste room door: ${esc(r.wasteDoor||"Not recorded")}<br>Warragul linen door: ${esc(r.linenDoor||"Not recorded")} • Linen trolleys: ${esc(r.trolleys||"Not recorded")}</div></div>
+    ${reportSection("Reason site round not completed",r.roundReason)}
+    ${reportSection("Shift comments and significant issues",r.shiftComments||r.handover)}
+    ${reportSection("Roster & UKG issues",r.rosterUKG||r.staffing)}
+    ${reportSection("Fluoro, discharge and patient-experience audits",r.audits)}
+    ${reportSection("Ward requests and internal transfers",r.wardRequests)}
+    ${reportSection("Linen",r.linen)}${reportSection("Waste management",r.waste)}
+    ${reportSection("Repairs and maintenance requests",r.repairs||r.maintenance)}
+    ${reportSection("Safety issues raised",r.safety||r.incidents)}${reportSection("RiskMan entries and injuries",r.riskman)}
+  </div>`;
+}
+function renderReports(){
+  const list=[...reports].sort((a,b)=>String(b.date).localeCompare(String(a.date))||["AM","PM","Night"].indexOf(a.shift)-["AM","PM","Night"].indexOf(b.shift));
+  document.getElementById("reportList").innerHTML=list.length?list.map(reportCard).join(""):'<div class="card muted">No shift reports saved yet.</div>';
+}
+function openReport(){
+  if(!canManage()){alert("Shift reports can be added by Manager, Team Leader and Supervisor roles.");return;}
+  reportFormTitle.textContent="New Shift Report";editReportId.value="";rDate.value=localDateValue();rShift.value="PM";rLeader.value=accessRole==="Team Leader"?"Sena Homa":"";
+  rRound1.value="Completed";rRound2.value="Completed";rRoundReason.value="";rEquipmentDoor.value="Yes";rWasteDoor.value="Yes";rLinenDoor.value="Yes";rTrolleys.value="Yes";
+  rShiftComments.value="";rRosterUKG.value="";rAudits.value="";rWardRequests.value="";rLinen.value="";rWaste.value="";rRepairs.value="";rSafety.value="";rRiskman.value="";
+  deleteReportBtn.classList.add("hidden");reportModal.classList.remove("hidden");
+}
+function editReport(id){
+  if(!canManage()){alert("Shift reports can be edited by Manager, Team Leader and Supervisor roles.");return;}
+  const r=reports.find(x=>x.id===id);if(!r)return;
+  reportFormTitle.textContent="Edit Shift Report";editReportId.value=r.id;rDate.value=r.date||"";rShift.value=r.shift||"PM";rLeader.value=r.leader||"";
+  rRound1.value=r.round1||"Not applicable";rRound2.value=r.round2||"Not applicable";rRoundReason.value=r.roundReason||"";rEquipmentDoor.value=r.equipmentDoor||"Not checked";rWasteDoor.value=r.wasteDoor||"Not checked";rLinenDoor.value=r.linenDoor||"Not checked";rTrolleys.value=r.trolleys||"Not checked";
+  rShiftComments.value=r.shiftComments||[r.cleaning?`Cleaning: ${r.cleaning}`:"",r.handover||""].filter(Boolean).join("\n");rRosterUKG.value=r.rosterUKG||r.staffing||"";rAudits.value=r.audits||"";rWardRequests.value=r.wardRequests||"";rLinen.value=r.linen||"";rWaste.value=r.waste||"";rRepairs.value=r.repairs||r.maintenance||"";rSafety.value=r.safety||r.incidents||"";rRiskman.value=r.riskman||"";
+  deleteReportBtn.classList.remove("hidden");reportModal.classList.remove("hidden");
+}
+function saveReport(emailAfter=false){
+  if(!canManage()){alert("You do not have permission to save shift reports.");return;}
+  const id=editReportId.value;
+  const obj={id:id||uid(),date:rDate.value,shift:rShift.value,leader:rLeader.value.trim(),round1:rRound1.value,round2:rRound2.value,roundReason:rRoundReason.value.trim(),equipmentDoor:rEquipmentDoor.value,wasteDoor:rWasteDoor.value,linenDoor:rLinenDoor.value,trolleys:rTrolleys.value,shiftComments:rShiftComments.value.trim(),rosterUKG:rRosterUKG.value.trim(),audits:rAudits.value.trim(),wardRequests:rWardRequests.value.trim(),linen:rLinen.value.trim(),waste:rWaste.value.trim(),repairs:rRepairs.value.trim(),safety:rSafety.value.trim(),riskman:rRiskman.value.trim(),updatedAt:new Date().toISOString()};
+  if(!obj.date){alert("Please select the report date.");return;}
+  if(id)reports=reports.map(r=>r.id===id?obj:r);else reports.push(obj);
+  saveReports();closeReportModal();renderReports();if(emailAfter)emailReport(obj.id);
+}
+function setReportEmail(value){reportEmailAddress=String(value||"").trim();localStorage.setItem("easyRosterReportEmail",reportEmailAddress)}
+function emailReport(id){
+  const r=reports.find(x=>x.id===id);if(!r)return;
+  const rows=[
+    "DAILY SHIFT REPORT - Casey General Services",`Date: ${formatReportDate(r.date)}`,`Shift: ${r.shift||""}`,`Name: ${r.leader||""}`,"",
+    `First site round: ${r.round1||"Not recorded"}`,`Second site round: ${r.round2||"Not recorded"}`,`Reason not completed: ${r.roundReason||"N/A"}`,
+    `Cleaning equipment room door closed: ${r.equipmentDoor||"Not recorded"}`,`Waste handling room door closed: ${r.wasteDoor||"Not recorded"}`,`Warragul linen room door closed: ${r.linenDoor||"Not recorded"}`,`Linen trolleys stacked properly: ${r.trolleys||"Not recorded"}`,"",
+    `SHIFT COMMENTS / SIGNIFICANT ISSUES\n${r.shiftComments||r.handover||"Nil"}`,"",`ROSTER & UKG ISSUES\n${r.rosterUKG||r.staffing||"Nil"}`,"",`AUDITS\n${r.audits||"Nil"}`,"",`WARD REQUESTS / INTERNAL TRANSFERS\n${r.wardRequests||"Nil"}`,"",`LINEN\n${r.linen||"Nil"}`,"",`WASTE MANAGEMENT\n${r.waste||"Nil"}`,"",`REPAIRS AND MAINTENANCE\n${r.repairs||r.maintenance||"Nil"}`,"",`SAFETY ISSUES\n${r.safety||r.incidents||"Nil"}`,"",`RISKMAN ENTRIES / INJURIES\n${r.riskman||"Nil"}`
+  ];
+  const subject=`Shift Report - ${r.date||""} - ${r.shift||""}`;
+  window.location.href=`mailto:${encodeURIComponent(reportEmailAddress)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(rows.join("\n"))}`;
+}
+function deleteReport(){const id=editReportId.value;if(id&&confirm("Delete this shift report?")){reports=reports.filter(r=>r.id!==id);saveReports();closeReportModal();renderReports();}}
+function closeReportModal(){reportModal.classList.add("hidden")}
+function clearAll(){if(confirm("Clear all roster data and shift reports from this device?")){entries=[];reports=[];save();saveReports();renderHome();renderWeekly();renderSick();renderReports();}}
 function exportData(){
-  const blob=new Blob([JSON.stringify(entries,null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({version:2,entries,reports},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="easy-roster-backup.json";a.click();URL.revokeObjectURL(a.href);
 }
 function importData(ev){
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{entries=JSON.parse(r.result);save();renderHome();renderWeekly();renderSick();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
+  r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data)){entries=data}else{entries=Array.isArray(data.entries)?data.entries:[];reports=Array.isArray(data.reports)?data.reports:[]}save();saveReports();renderHome();renderWeekly();renderSick();renderReports();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
   r.readAsText(f);
 }
 renderHome();
