@@ -91,6 +91,9 @@ textarea{min-height:86px;resize:vertical}
 .search-result .where{margin-top:5px;color:var(--text);font-size:13px;font-weight:650}
 .area-heading{margin:18px 2px 8px;padding:8px 11px;border-radius:10px;background:#e6f0fb;color:var(--navy);font-size:13px;font-weight:800}
 .area-heading:first-child{margin-top:4px}
+.week-tools{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:12px}
+.week-tools .actions{margin:0;justify-content:flex-end}
+.history-note{border-left:5px solid var(--purple)}
 .bottomnav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
   border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
@@ -139,6 +142,16 @@ textarea{min-height:86px;resize:vertical}
 
   <section id="weeklyView" class="hidden">
     <div class="section-title"><h3>Weekly Roster</h3><button class="btn primary" onclick="openAdd()">+ Add Staff</button></div>
+    <div class="card">
+      <div class="week-tools">
+        <div class="field"><label>Roster week</label><select id="weekSelector" onchange="selectRosterWeek(this.value)"></select></div>
+        <div class="actions">
+          <button class="btn primary" onclick="startNewWeek()">Start New Week</button>
+          <button class="btn secondary" onclick="copyPreviousWeek()">Copy Previous Week</button>
+        </div>
+      </div>
+      <div id="weekModeNote" class="muted"></div>
+    </div>
     <div id="pmSickSummary"></div>
     <input class="search" id="searchBox" placeholder="Search staff, ward or notes" oninput="renderWeekly()">
     <div class="formgrid" style="margin-bottom:12px">
@@ -369,9 +382,55 @@ let entries=applyStaffNameCorrections(addPhotoRoster(addPermanentRoster(loadEntr
 let accessRole=localStorage.getItem("easyRosterAccessRole")||"Team Leader";
 let reports=loadReports();
 let reportEmailAddress=localStorage.getItem("easyRosterReportEmail")||"";
+let rosterHistory=loadRosterHistory();
+let currentWeekStart=localStorage.getItem("easyRosterCurrentWeekStart")||mondayValue(new Date());
+let selectedWeekStart=currentWeekStart;
 
 function uid(){return (crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random())}
 function save(){localStorage.setItem("easyRosterPWA",JSON.stringify(entries));}
+function isoDate(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function dateFromISO(value){const [y,m,d]=String(value).split("-").map(Number);return new Date(y,m-1,d)}
+function mondayValue(date){const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return isoDate(d)}
+function addDays(value,days){const d=dateFromISO(value);d.setDate(d.getDate()+days);return isoDate(d)}
+function formatWeekRange(value){const start=dateFromISO(value),end=dateFromISO(addDays(value,6));const f=new Intl.DateTimeFormat("en-AU",{day:"numeric",month:"short"});return `${f.format(start)} to ${f.format(end)} ${end.getFullYear()}`}
+function loadRosterHistory(){try{const saved=JSON.parse(localStorage.getItem("easyRosterHistory")||"[]");return Array.isArray(saved)?saved:[]}catch{return []}}
+function saveRosterHistory(){localStorage.setItem("easyRosterHistory",JSON.stringify(rosterHistory));}
+function copyCleanRoster(list){return (Array.isArray(list)?list:[]).map(e=>({...e,id:uid(),absenceType:"",otherLeaveType:"",leaveStart:"",leaveEnd:"",leave:"",sickCall:false,reportedTime:"",sickReason:"",replacement:"",replacementStatus:"Needed",managementNotes:""}));}
+function initialiseWeeklyRoster(){
+  if(localStorage.getItem("easyRosterWeeksV1")){localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);return;}
+  const previous=addDays(currentWeekStart,-7);
+  if(entries.length&&!rosterHistory.some(w=>w.weekStart===previous))rosterHistory.push({weekStart:previous,entries:JSON.parse(JSON.stringify(entries)),savedAt:new Date().toISOString()});
+  entries=copyCleanRoster(entries);
+  localStorage.setItem("easyRosterWeeksV1","yes");localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);saveRosterHistory();save();
+}
+function selectedEntries(){if(selectedWeekStart===currentWeekStart)return entries;return rosterHistory.find(w=>w.weekStart===selectedWeekStart)?.entries||[]}
+function isHistoryView(){return selectedWeekStart!==currentWeekStart}
+function historyViewActive(){return isHistoryView()&&!document.getElementById("weeklyView").classList.contains("hidden")}
+function renderWeekSelector(){
+  const selector=document.getElementById("weekSelector");if(!selector)return;
+  const weeks=[currentWeekStart,...rosterHistory.map(w=>w.weekStart).filter(w=>w!==currentWeekStart)].sort((a,b)=>b.localeCompare(a));
+  selector.innerHTML=weeks.map(w=>`<option value="${esc(w)}">${w===currentWeekStart?"Current: ":"History: "}${esc(formatWeekRange(w))}</option>`).join("");
+  selector.value=selectedWeekStart;
+  document.getElementById("weekModeNote").textContent=isHistoryView()?"Saved history is view only. Return to the current week to make changes.":`Current roster: ${formatWeekRange(currentWeekStart)}. Leadership roles can update this week.`;
+}
+function selectRosterWeek(value){selectedWeekStart=value;renderWeekly()}
+function archiveCurrentWeek(){
+  const snapshot={weekStart:currentWeekStart,entries:JSON.parse(JSON.stringify(entries)),savedAt:new Date().toISOString()};
+  const index=rosterHistory.findIndex(w=>w.weekStart===currentWeekStart);if(index>=0)rosterHistory[index]=snapshot;else rosterHistory.push(snapshot);
+  saveRosterHistory();
+}
+function startNewWeek(){
+  if(!canManage()){alert("Only a Manager, Team Leader or Supervisor can start a new week.");return;}
+  const next=addDays(currentWeekStart,7);if(!confirm(`Start ${formatWeekRange(next)} and copy the current roster?`))return;
+  archiveCurrentWeek();entries=copyCleanRoster(entries);currentWeekStart=next;selectedWeekStart=next;localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);save();renderHome();renderWeekly();renderSick();
+}
+function copyPreviousWeek(){
+  if(!canManage()||isHistoryView()){alert("Open the current week as a Manager, Team Leader or Supervisor to copy a roster.");return;}
+  const previous=[...rosterHistory].filter(w=>w.weekStart<currentWeekStart).sort((a,b)=>b.weekStart.localeCompare(a.weekStart))[0];
+  if(!previous){alert("No previous roster is saved yet.");return;}
+  if(!confirm(`Replace this week's roster with ${formatWeekRange(previous.weekStart)}? Sick calls and leave will not be copied.`))return;
+  entries=copyCleanRoster(previous.entries);save();renderHome();renderWeekly();renderSick();
+}
 function loadReports(){try{const saved=JSON.parse(localStorage.getItem("easyRosterShiftReports")||"[]");return Array.isArray(saved)?saved:[]}catch{return []}}
 function saveReports(){localStorage.setItem("easyRosterShiftReports",JSON.stringify(reports));}
 function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));}
@@ -382,6 +441,7 @@ function todayName(){return new Intl.DateTimeFormat("en-AU",{weekday:"long"}).fo
 document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long"}).format(new Date());
 document.getElementById("accessRole").value=accessRole;
 document.getElementById("reportEmail").value=reportEmailAddress;
+initialiseWeeklyRoster();
 
 function countShift(s){return entries.filter(e=>e.shift===s).length}
 function absenceTypeOf(e){
@@ -418,14 +478,14 @@ function weeklySort(a,b){
   const ga=areaGroup(a.ward),gb=areaGroup(b.ward);
   return DAYS.indexOf(a.day)-DAYS.indexOf(b.day)||ga.order-gb.order||String(a.ward).localeCompare(String(b.ward))||String(a.start).localeCompare(String(b.start))||String(a.name).localeCompare(String(b.name));
 }
-function groupedWeeklyCards(list){
+function groupedWeeklyCards(list,readOnly=false){
   let previous="";
   return list.map(e=>{
     const group=areaGroup(e.ward);
     const key=e.day+"|"+group.label;
     const heading=key===previous?"":`<div class="area-heading">${esc(e.day)} • ${esc(group.label)}</div>`;
     previous=key;
-    return heading+entryCard(e);
+    return heading+entryCard(e,readOnly);
   }).join("");
 }
 function renderStaffSearch(){
@@ -463,24 +523,24 @@ function renderHome(){
   document.getElementById("recentList").innerHTML=entries.length?entries.slice(-5).reverse().map(entryCard).join(""):'<div class="card muted">Add your first roster entry using the + button.</div>';
   renderStaffSearch();
 }
-function entryCard(e){
+function entryCard(e,readOnly=false){
   const absence=hasAbsence(e);
   const label=absenceLabel(e);
   const absenceDetails=absence?`<span class="leave-tag ${absenceClass(e)}">${esc(label)}</span>${label==="Sick"&&e.reportedTime?`<div class="meta alert">Reported ${esc(e.reportedTime)}${e.sickReason?` • ${esc(e.sickReason)}`:""}</div>`:""}
     ${(e.leaveStart||e.leaveEnd)?`<div class="meta">${e.leaveStart?`From ${esc(e.leaveStart)}`:""}${e.leaveEnd?` • Return ${esc(e.leaveEnd)}`:""}</div>`:""}
     <span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}</span>`:"";
   const management=(canManage()&&e.managementNotes)?`<div class="meta"><strong>Management:</strong> ${esc(e.managementNotes)}</div>`:"";
-  return `<div class="card" onclick="editEntry('${e.id}')">
+  return `<div class="card" ${readOnly?"":`onclick="editEntry('${e.id}')"`}>
     <div class="rowhead"><div><span class="badge ${cls(e.shift)}">${esc(e.shift)}</span> <strong>${esc(e.day)}</strong></div><span class="muted">${esc(e.start)}–${esc(e.finish)}</span></div>
     <div class="staffline"><div><div class="staffname">${esc(e.name||"Unnamed staff")}</div>
     <div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")}${e.replacement?` • Replacement: ${esc(e.replacement)}`:""}</div></div>
-    <button class="sickbtn ${absence?"active "+absenceClass(e):""}" onclick="event.stopPropagation();openAbsence('${e.id}')">${absence?esc(label)+" ✓":"Add Leave"}</button></div>
+    ${readOnly?"":`<button class="sickbtn ${absence?"active "+absenceClass(e):""}" onclick="event.stopPropagation();openAbsence('${e.id}')">${absence?esc(label)+" ✓":"Add Leave"}</button>`}</div>
     ${absenceDetails}${management}${e.notes?`<div class="meta">${esc(e.notes)}</div>`:""}
   </div>`;
 }
 function renderPMSickSummary(){
   const day=document.getElementById("dayFilter")?.value||"ALL";
-  const pmSick=entries.filter(e=>e.shift==="PM"&&absenceTypeOf(e)==="Sick"&&(day==="ALL"||e.day===day));
+  const pmSick=selectedEntries().filter(e=>e.shift==="PM"&&absenceTypeOf(e)==="Sick"&&(day==="ALL"||e.day===day));
   const box=document.getElementById("pmSickSummary");
   if(!pmSick.length){box.innerHTML='<div class="card"><strong>PM sick-call summary</strong><div class="meta">No PM sick calls recorded for this view.</div></div>';return;}
   box.innerHTML=`<div class="card sick-summary"><h4>PM sick-call summary</h4>${pmSick.map(e=>`<div class="staffrow"><strong>${esc(e.day)}: ${esc(e.name||"Unnamed staff")}</strong><div class="meta">${esc(e.role||"Role not set")} • ${esc(e.ward||"No ward/unit")} • ${esc(e.start)}–${esc(e.finish)}</div><span class="status ${statusCls(e.replacementStatus)}">${esc(e.replacementStatus||"Needed")}${e.replacement?` • ${esc(e.replacement)}`:""}</span></div>`).join("")}</div>`;
@@ -489,9 +549,10 @@ function renderWeekly(){
   let q=(document.getElementById("searchBox")?.value||"").toLowerCase();
   let day=document.getElementById("dayFilter")?.value||"ALL";
   let shift=document.getElementById("shiftFilter")?.value||"ALL";
-  let list=entries.filter(e=>(day==="ALL"||e.day===day)&&(shift==="ALL"||e.shift===shift)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
+  let list=selectedEntries().filter(e=>(day==="ALL"||e.day===day)&&(shift==="ALL"||e.shift===shift)&&(!q||JSON.stringify(e).toLowerCase().includes(q)));
   list.sort(weeklySort);
-  document.getElementById("weeklyList").innerHTML=list.length?groupedWeeklyCards(list):'<div class="card muted">No roster entries match your filters.</div>';
+  renderWeekSelector();
+  document.getElementById("weeklyList").innerHTML=list.length?groupedWeeklyCards(list,isHistoryView()):'<div class="card muted">No roster entries match your filters.</div>';
   renderPMSickSummary();
 }
 function renderSick(){
@@ -511,6 +572,7 @@ function showShift(s){go("week");document.getElementById("shiftFilter").value=s;
 function showWeekly(){go("week");}
 
 function openAdd(){
+  if(historyViewActive()){alert("Roster History is view only. Select the current week to add staff.");return;}
   document.getElementById("formTitle").textContent="Add Staff";
   document.getElementById("editId").value="";
   document.getElementById("fDay").value=todayName();
@@ -538,6 +600,7 @@ function applyDefaults(){
   document.getElementById("fStart").value=d[0];document.getElementById("fFinish").value=d[1];
 }
 function editEntry(id){
+  if(historyViewActive()){alert("Roster History is view only. Select the current week to make changes.");return;}
   const e=entries.find(x=>x.id===id); if(!e)return;
   document.getElementById("formTitle").textContent="Edit Staff";
   document.getElementById("editId").value=e.id;
@@ -575,6 +638,7 @@ function setAccessRole(role){
 }
 function closeModal(){modal.classList.add("hidden")}
 function saveEntry(){
+  if(historyViewActive()){alert("Roster History is view only.");return;}
   const id=document.getElementById("editId").value;
   const existing=entries.find(e=>e.id===id);
   const managed=canManage();
@@ -593,6 +657,7 @@ function saveEntry(){
   save();closeModal();renderHome();renderWeekly();renderSick();
 }
 function deleteEntry(){
+  if(historyViewActive()){alert("Roster History is view only.");return;}
   const id=document.getElementById("editId").value;if(!id)return;
   if(confirm("Delete this roster entry?")){entries=entries.filter(e=>e.id!==id);save();closeModal();renderHome();renderWeekly();renderSick();}
 }
@@ -655,14 +720,14 @@ function emailReport(id){
 }
 function deleteReport(){const id=editReportId.value;if(id&&confirm("Delete this shift report?")){reports=reports.filter(r=>r.id!==id);saveReports();closeReportModal();renderReports();}}
 function closeReportModal(){reportModal.classList.add("hidden")}
-function clearAll(){if(confirm("Clear all roster data and shift reports from this device?")){entries=[];reports=[];save();saveReports();renderHome();renderWeekly();renderSick();renderReports();}}
+function clearAll(){if(confirm("Clear the current roster, roster history and shift reports from this device?")){entries=[];reports=[];rosterHistory=[];save();saveReports();saveRosterHistory();renderHome();renderWeekly();renderSick();renderReports();}}
 function exportData(){
-  const blob=new Blob([JSON.stringify({version:2,entries,reports},null,2)],{type:"application/json"});
+  const blob=new Blob([JSON.stringify({version:3,currentWeekStart,entries,rosterHistory,reports},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="easy-roster-backup.json";a.click();URL.revokeObjectURL(a.href);
 }
 function importData(ev){
   const f=ev.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data)){entries=data}else{entries=Array.isArray(data.entries)?data.entries:[];reports=Array.isArray(data.reports)?data.reports:[]}save();saveReports();renderHome();renderWeekly();renderSick();renderReports();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
+  r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data)){entries=data}else{entries=Array.isArray(data.entries)?data.entries:[];reports=Array.isArray(data.reports)?data.reports:[];rosterHistory=Array.isArray(data.rosterHistory)?data.rosterHistory:[];if(data.currentWeekStart){currentWeekStart=data.currentWeekStart;selectedWeekStart=currentWeekStart;localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart)}}save();saveReports();saveRosterHistory();renderHome();renderWeekly();renderSick();renderReports();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
   r.readAsText(f);
 }
 renderHome();
