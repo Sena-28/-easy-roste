@@ -94,10 +94,22 @@ textarea{min-height:86px;resize:vertical}
 .week-tools{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;margin-bottom:12px}
 .week-tools .actions{margin:0;justify-content:flex-end}
 .history-note{border-left:5px solid var(--purple)}
+.print-preview{background:#e9eef5;border:1px solid var(--line);border-radius:18px;padding:14px;overflow:auto}
+.print-page{background:#fff;color:#172b3f;max-width:794px;min-height:1050px;margin:0 auto 16px;padding:28px;box-shadow:0 4px 18px rgba(18,38,63,.12);break-after:page}
+.print-page:last-child{break-after:auto}
+.print-header{border-bottom:3px solid var(--navy);padding-bottom:10px;margin-bottom:12px}
+.print-header h2{margin:0;color:var(--navy);font-size:21px}.print-header p{margin:4px 0 0;font-size:12px}
+.print-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 14px;font-size:12px}
+.print-meta div{border:1px solid #b9c8d6;padding:7px}
+.print-table{width:100%;border-collapse:collapse;font-size:11px}.print-table th,.print-table td{border:1px solid #9fb0c0;padding:5px;text-align:left;vertical-align:top}
+.print-table th{background:#e6f0fb;color:var(--navy)}.print-table .group-row td{background:#edf3f8;font-weight:800;color:var(--navy)}
+.check-box{display:inline-block;width:14px;height:14px;border:1px solid #445b70;vertical-align:middle}
+.print-handover{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.print-handover>div{border:1px solid #9fb0c0;min-height:78px;padding:7px;font-size:11px}
+.print-root{display:none}
 .bottomnav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(16px);
   border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-  display:grid;grid-template-columns:repeat(5,1fr)
+  display:grid;grid-template-columns:repeat(6,1fr)
 }
 .bottomnav button{border:0;background:transparent;color:var(--muted);font-size:11px;padding:6px}
 .bottomnav button strong{display:block;font-size:20px;line-height:1.1;margin-bottom:2px}.bottomnav button.active{color:var(--navy)}
@@ -105,6 +117,14 @@ textarea{min-height:86px;resize:vertical}
 .sheet{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:24px 24px 0 0;padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
 .sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.sheethead h3{margin:0}
 @media(min-width:700px){.quickgrid{grid-template-columns:repeat(4,1fr)} .modal{align-items:center;justify-content:center}.sheet{max-width:620px;border-radius:24px;max-height:80vh}}
+@media print{
+  @page{size:A4 portrait;margin:8mm}
+  body{background:#fff;padding:0}
+  body>header,body>main,body>nav,body>.modal{display:none!important}
+  #printRoot{display:block!important}
+  .print-page{width:100%;max-width:none;min-height:0;margin:0;padding:0;box-shadow:none}
+  .print-preview{padding:0;border:0;background:#fff}
+}
 </style>
 </head>
 <body>
@@ -170,6 +190,10 @@ textarea{min-height:86px;resize:vertical}
   <section id="sickView" class="hidden">
     <div class="section-title"><h3>Absences & Leave</h3></div>
     <p class="section-note">Sick, annual leave, long service leave, WorkCover and other leave.</p>
+    <div class="card"><div class="formgrid">
+      <div class="field"><label>Leave category</label><select id="leaveFilter" onchange="renderSick()"><option value="ALL">All leave</option><option>Sick</option><option>Annual Leave</option><option>Long Service Leave (LSL)</option><option>WorkCover</option><option>Other Leave</option></select></div>
+      <div class="field"><label>Replacement status</label><select id="leaveStatusFilter" onchange="renderSick()"><option value="ALL">All statuses</option><option>Needed</option><option>Contacted</option><option>Confirmed</option></select></div>
+    </div></div>
     <div id="allSickList"></div>
   </section>
 
@@ -177,6 +201,25 @@ textarea{min-height:86px;resize:vertical}
     <div class="section-title"><h3>Shift Reports</h3><button class="btn primary" onclick="openReport()">+ New Report</button></div>
     <p class="section-note">Detailed reports for staffing, incidents, cleaning, maintenance and handover.</p>
     <div id="reportList"></div>
+  </section>
+
+  <section id="printView" class="hidden">
+    <div class="section-title"><h3>Print Centre</h3></div>
+    <p class="section-note">Create day-by-day staffing and hospital checklist pages directly from the saved roster.</p>
+    <div class="card">
+      <div class="formgrid">
+        <div class="field"><label>Roster week</label><select id="printWeek" onchange="renderPrintPreview()"></select></div>
+        <div class="field"><label>Day</label><select id="printDay" onchange="renderPrintPreview()"><option value="ALL">Monday to Sunday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+        <div class="field"><label>Staff pages</label><select id="printRole" onchange="renderPrintPreview()"><option value="ESA_PSA">ESA and PSA, separate pages</option><option value="PSA">PSA only</option><option value="ESA">ESA only</option><option value="MIT A">MIT A only</option><option value="LEADERSHIP">Leadership only</option><option value="ALL">All staff together</option></select></div>
+        <div class="field"><label>Shift</label><select id="printShift" onchange="renderPrintPreview()"><option value="ALL">All shifts</option><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" onclick="printRosterSelection()">Print / Save PDF</button>
+        <button class="btn secondary" onclick="printFullWeek()">Full Week ESA + PSA</button>
+      </div>
+      <div id="printSummary" class="meta"></div>
+    </div>
+    <div id="printPreview" class="print-preview"></div>
   </section>
 
   <section id="settingsView" class="hidden">
@@ -197,7 +240,7 @@ textarea{min-height:86px;resize:vertical}
         <button class="btn primary" onclick="exportData()">Export Backup</button>
         <label class="btn secondary" for="importFile">Import Backup</label>
         <input id="importFile" type="file" accept=".json" style="display:none" onchange="importData(event)">
-        <button class="btn secondary" onclick="window.print()">Print / Save PDF</button>
+        <button class="btn secondary" onclick="go('print')">Open Print Centre</button>
       </div>
     </div>
     <div class="card">
@@ -218,8 +261,11 @@ textarea{min-height:86px;resize:vertical}
   <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
   <button id="navSick" onclick="go('sick')"><strong>!</strong>Leave</button>
   <button id="navReport" onclick="go('report')"><strong>≡</strong>Reports</button>
+  <button id="navPrint" onclick="go('print')"><strong>▤</strong>Print</button>
   <button id="navSet" onclick="go('settings')"><strong>⚙</strong>Settings</button>
 </nav>
+
+<div id="printRoot" class="print-root" aria-hidden="true"></div>
 
 <div id="modal" class="modal hidden" onclick="if(event.target===this) closeModal()">
   <div class="sheet">
@@ -404,6 +450,7 @@ function initialiseWeeklyRoster(){
   localStorage.setItem("easyRosterWeeksV1","yes");localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);saveRosterHistory();save();
 }
 function selectedEntries(){if(selectedWeekStart===currentWeekStart)return entries;return rosterHistory.find(w=>w.weekStart===selectedWeekStart)?.entries||[]}
+function entriesForWeek(weekStart){if(weekStart===currentWeekStart)return entries;return rosterHistory.find(w=>w.weekStart===weekStart)?.entries||[]}
 function isHistoryView(){return selectedWeekStart!==currentWeekStart}
 function historyViewActive(){return isHistoryView()&&!document.getElementById("weeklyView").classList.contains("hidden")}
 function renderWeekSelector(){
@@ -494,10 +541,10 @@ function renderStaffSearch(){
   const count=document.getElementById("staffSearchCount");
   const clear=document.getElementById("clearStaffSearch");
   if(!input||!results||!count||!clear)return;
-  const q=input.value.trim().toLowerCase();
+  const q=normaliseSearch(input.value);
   clear.classList.toggle("hidden",!q);
   if(!q){count.textContent="Type a name";results.className="card muted";results.innerHTML="Enter a staff name to see their day, area and time.";return;}
-  const list=entries.filter(e=>String(e.name||"").toLowerCase().includes(q));
+  const list=entries.filter(e=>normaliseSearch(e.name).includes(q));
   list.sort((a,b)=>String(a.name).localeCompare(String(b.name))||weeklySort(a,b));
   count.textContent=`${list.length} ${list.length===1?"shift":"shifts"}`;
   results.className="card";
@@ -507,6 +554,7 @@ function renderStaffSearch(){
     <div class="where">${esc(e.day)} • ${esc(e.ward||"No area/ward")} • ${esc(e.start)}–${esc(e.finish)}</div>
   </div>`).join(""):'<div class="muted">No rostered staff names match your search.</div>';
 }
+function normaliseSearch(value){return String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()}
 function clearStaffSearch(){
   document.getElementById("staffSearchBox").value="";
   renderStaffSearch();
@@ -556,16 +604,80 @@ function renderWeekly(){
   renderPMSickSummary();
 }
 function renderSick(){
-  const sick=entries.filter(hasAbsence);
+  const type=document.getElementById("leaveFilter")?.value||"ALL";
+  const status=document.getElementById("leaveStatusFilter")?.value||"ALL";
+  const sick=entries.filter(e=>hasAbsence(e)&&(type==="ALL"||absenceLabel(e)===type)&&(status==="ALL"||(e.replacementStatus||"Needed")===status));
   document.getElementById("allSickList").innerHTML=sick.length?sick.map(entryCard).join(""):'<div class="card muted">No absences or leave recorded.</div>';
 }
+function printWeekOptions(){
+  const select=document.getElementById("printWeek");if(!select)return;
+  const keep=select.value||currentWeekStart;
+  const weeks=[currentWeekStart,...rosterHistory.map(w=>w.weekStart).filter(w=>w!==currentWeekStart)].sort((a,b)=>b.localeCompare(a));
+  select.innerHTML=weeks.map(w=>`<option value="${esc(w)}">${w===currentWeekStart?"Current: ":"History: "}${esc(formatWeekRange(w))}</option>`).join("");
+  select.value=weeks.includes(keep)?keep:currentWeekStart;
+}
+function printRoleGroups(mode){
+  if(mode==="ESA_PSA")return [{key:"ESA",label:"ESA"},{key:"PSA",label:"PSA"}];
+  if(mode==="LEADERSHIP")return [{key:"LEADERSHIP",label:"Leadership"}];
+  if(mode==="ALL")return [{key:"ALL",label:"All Staff"}];
+  return [{key:mode,label:mode}];
+}
+function roleMatches(entry,key){
+  if(key==="ALL")return true;
+  if(key==="LEADERSHIP")return MANAGEMENT_ROLES.includes(entry.role);
+  return entry.role===key;
+}
+function checklistDate(weekStart,day){return formatReportDate(addDays(weekStart,DAYS.indexOf(day)))}
+function printStatus(entry){
+  if(hasAbsence(entry))return `${absenceLabel(entry)} • ${entry.replacementStatus||"Needed"}${entry.replacement?` • Cover: ${entry.replacement}`:""}`;
+  if(String(entry.name||"").toUpperCase()==="VACANT")return "VACANT";
+  return "OK / CALL";
+}
+function checklistPage(day,roleGroup,list,weekStart){
+  let previous="";
+  const rows=list.length?list.map(e=>{
+    const group=areaGroup(e.ward).label;
+    const heading=group===previous?"":`<tr class="group-row"><td colspan="7">${esc(group)}</td></tr>`;
+    previous=group;
+    return `${heading}<tr><td><span class="check-box"></span></td><td>${esc(e.ward||"Unallocated")}</td><td>${esc(e.name||"Unnamed staff")}</td><td>${esc(e.role||"")}</td><td>${esc(e.start||"")}–${esc(e.finish||"")}</td><td>${esc(e.shift||"")}</td><td>${esc(printStatus(e))}</td></tr>`;
+  }).join(""):'<tr><td colspan="7">No staff rostered for this selection.</td></tr>';
+  return `<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • DAILY STAFFING CHECKLIST</h2><p>Easy Roster day-by-day operational page</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(checklistDate(weekStart,day))}</div><div><strong>Staff group</strong><br>${esc(roleGroup.label)}</div><div><strong>Team Leader</strong><br>Sena Homa</div></div><table class="print-table"><thead><tr><th>Done</th><th>Ward / Unit</th><th>Staff Name</th><th>Role</th><th>Time</th><th>Shift</th><th>Status / Cover</th></tr></thead><tbody>${rows}</tbody></table><div class="print-handover"><div><strong>Team Leader quick checks</strong><br>☐ All staff arrived &nbsp; ☐ Sick calls recorded<br>☐ Priority areas checked &nbsp; ☐ Break coverage confirmed</div><div><strong>Handover and follow-up</strong><br>☐ Outstanding work recorded<br>☐ Floaters allocated &nbsp; ☐ Keys / phone handed over</div><div><strong>Staffing changes / vacancies</strong><br><br>________________________________________</div><div><strong>Incidents / cleaning / maintenance</strong><br><br>________________________________________</div></div></article>`;
+}
+function generateRosterPrint(options={}){
+  const weekStart=options.weekStart||document.getElementById("printWeek")?.value||currentWeekStart;
+  const dayChoice=options.day||document.getElementById("printDay")?.value||"ALL";
+  const roleMode=options.role||document.getElementById("printRole")?.value||"ESA_PSA";
+  const shift=options.shift||document.getElementById("printShift")?.value||"ALL";
+  const days=dayChoice==="ALL"?DAYS:[dayChoice];
+  const all=entriesForWeek(weekStart);
+  let pages=[];
+  days.forEach(day=>printRoleGroups(roleMode).forEach(group=>{
+    const list=all.filter(e=>e.day===day&&roleMatches(e,group.key)&&(shift==="ALL"||e.shift===shift)).sort(weeklySort);
+    pages.push(checklistPage(day,group,list,weekStart));
+  }));
+  return {html:pages.join(""),pages:pages.length,staff:days.reduce((n,day)=>n+all.filter(e=>e.day===day&&(shift==="ALL"||e.shift===shift)&&(roleMode==="ESA_PSA"?["ESA","PSA"].includes(e.role):roleMatches(e,roleMode))).length,0)};
+}
+function renderPrintPreview(){
+  printWeekOptions();
+  const output=generateRosterPrint();
+  document.getElementById("printPreview").innerHTML=output.html;
+  document.getElementById("printSummary").textContent=`${output.pages} printable ${output.pages===1?"page":"pages"} • ${output.staff} roster entries`;
+}
+function printRosterSelection(){
+  const output=generateRosterPrint();printRoot.innerHTML=output.html;window.setTimeout(()=>window.print(),80);
+}
+function printFullWeek(){
+  document.getElementById("printDay").value="ALL";document.getElementById("printRole").value="ESA_PSA";document.getElementById("printShift").value="ALL";
+  renderPrintPreview();printRosterSelection();
+}
 function go(view){
-  ["homeView","weeklyView","sickView","reportView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
-  ["navHome","navWeek","navSick","navReport","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  ["homeView","weeklyView","sickView","reportView","printView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navReport","navPrint","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
   if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
   if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
   if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
   if(view==="report"){reportView.classList.remove("hidden");navReport.classList.add("active");renderReports();}
+  if(view==="print"){printView.classList.remove("hidden");navPrint.classList.add("active");renderPrintPreview();}
   if(view==="settings"){settingsView.classList.remove("hidden");navSet.classList.add("active");}
 }
 function showShift(s){go("week");document.getElementById("shiftFilter").value=s;renderWeekly();}
@@ -666,7 +778,7 @@ function formatReportDate(value){if(!value)return "Date not set";return new Intl
 function reportSection(title,value){return value?`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value)}</div></div>`:""}
 function reportCard(r){
   return `<div class="card">
-    <div class="rowhead"><div><span class="badge ${cls(r.shift)}">${esc(r.shift)}</span> <strong>${esc(formatReportDate(r.date))}</strong></div><div class="actions" style="margin:0"><button class="btn secondary" onclick="emailReport('${r.id}')">Email</button>${canManage()?`<button class="btn secondary" onclick="editReport('${r.id}')">Edit</button>`:""}</div></div>
+    <div class="rowhead"><div><span class="badge ${cls(r.shift)}">${esc(r.shift)}</span> <strong>${esc(formatReportDate(r.date))}</strong></div><div class="actions" style="margin:0"><button class="btn secondary" onclick="printReport('${r.id}')">Print/PDF</button><button class="btn secondary" onclick="emailReport('${r.id}')">Email</button>${canManage()?`<button class="btn secondary" onclick="editReport('${r.id}')">Edit</button>`:""}</div></div>
     <div class="meta"><strong>Name:</strong> ${esc(r.leader||"Not recorded")}</div>
     <div class="report-section"><strong>Checks</strong><div class="report-text">Site rounds: 1st ${esc(r.round1||"Not recorded")}, 2nd ${esc(r.round2||"Not recorded")}<br>Equipment room door: ${esc(r.equipmentDoor||"Not recorded")} • Waste room door: ${esc(r.wasteDoor||"Not recorded")}<br>Warragul linen door: ${esc(r.linenDoor||"Not recorded")} • Linen trolleys: ${esc(r.trolleys||"Not recorded")}</div></div>
     ${reportSection("Reason site round not completed",r.roundReason)}
@@ -717,6 +829,14 @@ function emailReport(id){
   ];
   const subject=`Shift Report - ${r.date||""} - ${r.shift||""}`;
   window.location.href=`mailto:${encodeURIComponent(reportEmailAddress)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(rows.join("\n"))}`;
+}
+function printReport(id){
+  const r=reports.find(x=>x.id===id);if(!r)return;
+  const sections=[
+    ["Reason site round not completed",r.roundReason],["Shift comments / significant issues",r.shiftComments||r.handover],["Roster & UKG issues",r.rosterUKG||r.staffing],["Audits",r.audits],["Ward requests / internal transfers",r.wardRequests],["Linen",r.linen],["Waste management",r.waste],["Repairs and maintenance",r.repairs||r.maintenance],["Safety issues",r.safety||r.incidents],["RiskMan entries / injuries",r.riskman]
+  ];
+  printRoot.innerHTML=`<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • DAILY SHIFT REPORT</h2><p>General Services shift handover record</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(formatReportDate(r.date))}</div><div><strong>Shift</strong><br>${esc(r.shift||"Not recorded")}</div><div><strong>Prepared by</strong><br>${esc(r.leader||"Not recorded")}</div></div><table class="print-table"><tr><th>Mandatory checks</th><th>Result</th></tr><tr><td>First site round</td><td>${esc(r.round1||"Not recorded")}</td></tr><tr><td>Second site round</td><td>${esc(r.round2||"Not recorded")}</td></tr><tr><td>Equipment room door</td><td>${esc(r.equipmentDoor||"Not recorded")}</td></tr><tr><td>Waste room door</td><td>${esc(r.wasteDoor||"Not recorded")}</td></tr><tr><td>Warragul linen room door</td><td>${esc(r.linenDoor||"Not recorded")}</td></tr><tr><td>Linen trolleys</td><td>${esc(r.trolleys||"Not recorded")}</td></tr></table>${sections.map(([title,value])=>`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value||"Nil")}</div></div>`).join("")}<div class="print-handover"><div><strong>Team Leader signature</strong><br><br>____________________________</div><div><strong>Receiving staff / time</strong><br><br>____________________________</div></div></article>`;
+  window.setTimeout(()=>window.print(),80);
 }
 function deleteReport(){const id=editReportId.value;if(id&&confirm("Delete this shift report?")){reports=reports.filter(r=>r.id!==id);saveReports();closeReportModal();renderReports();}}
 function closeReportModal(){reportModal.classList.add("hidden")}
