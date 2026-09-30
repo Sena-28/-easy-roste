@@ -209,13 +209,13 @@ textarea{min-height:86px;resize:vertical}
     <div class="card">
       <div class="formgrid">
         <div class="field"><label>Roster week</label><select id="printWeek" onchange="renderPrintPreview()"></select></div>
-        <div class="field"><label>Day</label><select id="printDay" onchange="renderPrintPreview()"><option value="ALL">Monday to Sunday</option><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
+        <div class="field"><label>Day and date</label><select id="printDay" onchange="renderPrintPreview()"><option value="ALL">Monday to Sunday, day by day</option></select></div>
         <div class="field"><label>Staff pages</label><select id="printRole" onchange="renderPrintPreview()"><option value="ESA_PSA">ESA and PSA, separate pages</option><option value="PSA">PSA only</option><option value="ESA">ESA only</option><option value="MIT A">MIT A only</option><option value="LEADERSHIP">Leadership only</option><option value="ALL">All staff together</option></select></div>
         <div class="field"><label>Shift</label><select id="printShift" onchange="renderPrintPreview()"><option value="ALL">All shifts</option><option>AM</option><option>PM</option><option>Night</option><option>Custom</option></select></div>
       </div>
       <div class="actions">
         <button class="btn primary" onclick="printRosterSelection()">Print / Save PDF</button>
-        <button class="btn secondary" onclick="printFullWeek()">Full Week ESA + PSA</button>
+        <button class="btn secondary" onclick="printFullWeek()">Print Monday-Sunday Day by Day</button>
       </div>
       <div id="printSummary" class="meta"></div>
     </div>
@@ -401,7 +401,7 @@ function addPhotoRoster(existing){
   PHOTO_ROSTER.forEach(row=>row.days.forEach((raw,index)=>{
     const name=String(raw||"").trim();
     if(!name||["DAY OFF","N/A","CONFIRM","SEE VACANCY SHEET"].includes(name.toUpperCase())||/^\\d{1,2}:\\d{2}/.test(name))return;
-    const obj={id:uid(),day:DAYS[index],shift:classifyRosterShift(row.time),name,role:row.role||"PSA",ward:row.area,start:String(row.time).split("-")[0]||"",finish:String(row.time).split("-")[1]||"",leave:"",sickCall:false,reportedTime:"",sickReason:"",replacement:"",replacementStatus:"Needed",managementNotes:"",notes:"Roster week 31 Aug-6 Sep 2026",source:"photoRoster202609"};
+    const obj={id:uid(),day:DAYS[index],shift:classifyRosterShift(row.time),name,role:row.role||"PSA",ward:row.area,start:String(row.time).split("-")[0]||"",finish:String(row.time).split("-")[1]||"",leave:"",sickCall:false,reportedTime:"",sickReason:"",replacement:"",replacementStatus:"Needed",managementNotes:"",notes:"",source:"photoRoster202609"};
     const key=rosterEntryKey(obj);if(seen.has(key))return;
     list.push(obj);seen.add(key);photoRosterCount++;
   }));
@@ -439,12 +439,22 @@ function dateFromISO(value){const [y,m,d]=String(value).split("-").map(Number);r
 function mondayValue(date){const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());const day=d.getDay()||7;d.setDate(d.getDate()-day+1);return isoDate(d)}
 function addDays(value,days){const d=dateFromISO(value);d.setDate(d.getDate()+days);return isoDate(d)}
 function formatWeekRange(value){const start=dateFromISO(value),end=dateFromISO(addDays(value,6));const f=new Intl.DateTimeFormat("en-AU",{day:"numeric",month:"short"});return `${f.format(start)} to ${f.format(end)} ${end.getFullYear()}`}
+function rosterWeekNote(value){return `Roster week ${formatWeekRange(value)}`}
 function loadRosterHistory(){try{const saved=JSON.parse(localStorage.getItem("easyRosterHistory")||"[]");return Array.isArray(saved)?saved:[]}catch{return []}}
 function saveRosterHistory(){localStorage.setItem("easyRosterHistory",JSON.stringify(rosterHistory));}
-function copyCleanRoster(list){return (Array.isArray(list)?list:[]).map(e=>({...e,id:uid(),absenceType:"",otherLeaveType:"",leaveStart:"",leaveEnd:"",leave:"",sickCall:false,reportedTime:"",sickReason:"",replacement:"",replacementStatus:"Needed",managementNotes:""}));}
+function updateRosterWeekNotes(list,weekStart){
+  const note=rosterWeekNote(weekStart);
+  return (Array.isArray(list)?list:[]).map(e=>{
+    const oldNote=String(e.notes||"");
+    if(e.source==="photoRoster202609"||/^Roster week\b/i.test(oldNote))return {...e,notes:note};
+    return e;
+  });
+}
+function copyCleanRoster(list,weekStart=currentWeekStart){return updateRosterWeekNotes((Array.isArray(list)?list:[]).map(e=>({...e,id:uid(),absenceType:"",otherLeaveType:"",leaveStart:"",leaveEnd:"",leave:"",sickCall:false,reportedTime:"",sickReason:"",replacement:"",replacementStatus:"Needed",managementNotes:""})),weekStart);}
 function initialiseWeeklyRoster(){
   if(localStorage.getItem("easyRosterWeeksV1")){localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);return;}
   const previous=addDays(currentWeekStart,-7);
+  entries=updateRosterWeekNotes(entries,previous);
   if(entries.length&&!rosterHistory.some(w=>w.weekStart===previous))rosterHistory.push({weekStart:previous,entries:JSON.parse(JSON.stringify(entries)),savedAt:new Date().toISOString()});
   entries=copyCleanRoster(entries);
   localStorage.setItem("easyRosterWeeksV1","yes");localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);saveRosterHistory();save();
@@ -466,17 +476,31 @@ function archiveCurrentWeek(){
   const index=rosterHistory.findIndex(w=>w.weekStart===currentWeekStart);if(index>=0)rosterHistory[index]=snapshot;else rosterHistory.push(snapshot);
   saveRosterHistory();
 }
+function syncRosterWeekToToday(){
+  const thisWeek=mondayValue(new Date());
+  while(currentWeekStart<thisWeek){
+    entries=updateRosterWeekNotes(entries,currentWeekStart);
+    archiveCurrentWeek();
+    const next=addDays(currentWeekStart,7);
+    entries=copyCleanRoster(entries,next);
+    currentWeekStart=next;
+  }
+  entries=updateRosterWeekNotes(entries,currentWeekStart);
+  selectedWeekStart=currentWeekStart;
+  localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);
+  saveRosterHistory();save();
+}
 function startNewWeek(){
   if(!canManage()){alert("Only a Manager, Team Leader or Supervisor can start a new week.");return;}
   const next=addDays(currentWeekStart,7);if(!confirm(`Start ${formatWeekRange(next)} and copy the current roster?`))return;
-  archiveCurrentWeek();entries=copyCleanRoster(entries);currentWeekStart=next;selectedWeekStart=next;localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);save();renderHome();renderWeekly();renderSick();
+  archiveCurrentWeek();entries=copyCleanRoster(entries,next);currentWeekStart=next;selectedWeekStart=next;localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart);save();renderHome();renderWeekly();renderSick();
 }
 function copyPreviousWeek(){
   if(!canManage()||isHistoryView()){alert("Open the current week as a Manager, Team Leader or Supervisor to copy a roster.");return;}
   const previous=[...rosterHistory].filter(w=>w.weekStart<currentWeekStart).sort((a,b)=>b.weekStart.localeCompare(a.weekStart))[0];
   if(!previous){alert("No previous roster is saved yet.");return;}
   if(!confirm(`Replace this week's roster with ${formatWeekRange(previous.weekStart)}? Sick calls and leave will not be copied.`))return;
-  entries=copyCleanRoster(previous.entries);save();renderHome();renderWeekly();renderSick();
+  entries=copyCleanRoster(previous.entries,currentWeekStart);save();renderHome();renderWeekly();renderSick();
 }
 function loadReports(){try{const saved=JSON.parse(localStorage.getItem("easyRosterShiftReports")||"[]");return Array.isArray(saved)?saved:[]}catch{return []}}
 function saveReports(){localStorage.setItem("easyRosterShiftReports",JSON.stringify(reports));}
@@ -489,6 +513,7 @@ document.getElementById("todayLabel").textContent=new Intl.DateTimeFormat("en-AU
 document.getElementById("accessRole").value=accessRole;
 document.getElementById("reportEmail").value=reportEmailAddress;
 initialiseWeeklyRoster();
+syncRosterWeekToToday();
 
 function countShift(s){return entries.filter(e=>e.shift===s).length}
 function absenceTypeOf(e){
@@ -615,6 +640,15 @@ function printWeekOptions(){
   const weeks=[currentWeekStart,...rosterHistory.map(w=>w.weekStart).filter(w=>w!==currentWeekStart)].sort((a,b)=>b.localeCompare(a));
   select.innerHTML=weeks.map(w=>`<option value="${esc(w)}">${w===currentWeekStart?"Current: ":"History: "}${esc(formatWeekRange(w))}</option>`).join("");
   select.value=weeks.includes(keep)?keep:currentWeekStart;
+  updatePrintDayOptions(select.value);
+}
+function updatePrintDayOptions(weekStart){
+  const select=document.getElementById("printDay");if(!select)return;
+  const keep=select.value||"ALL";
+  const options=[`<option value="ALL">All days: ${esc(formatWeekRange(weekStart))}</option>`];
+  DAYS.forEach((day,index)=>options.push(`<option value="${esc(day)}">${esc(checklistDate(weekStart,day))}</option>`));
+  select.innerHTML=options.join("");
+  select.value=keep==="ALL"||DAYS.includes(keep)?keep:"ALL";
 }
 function printRoleGroups(mode){
   if(mode==="ESA_PSA")return [{key:"ESA",label:"ESA"},{key:"PSA",label:"PSA"}];
@@ -641,7 +675,7 @@ function checklistPage(day,roleGroup,list,weekStart){
     previous=group;
     return `${heading}<tr><td><span class="check-box"></span></td><td>${esc(e.ward||"Unallocated")}</td><td>${esc(e.name||"Unnamed staff")}</td><td>${esc(e.role||"")}</td><td>${esc(e.start||"")}–${esc(e.finish||"")}</td><td>${esc(e.shift||"")}</td><td>${esc(printStatus(e))}</td></tr>`;
   }).join(""):'<tr><td colspan="7">No staff rostered for this selection.</td></tr>';
-  return `<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • DAILY STAFFING CHECKLIST</h2><p>Easy Roster day-by-day operational page</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(checklistDate(weekStart,day))}</div><div><strong>Staff group</strong><br>${esc(roleGroup.label)}</div><div><strong>Team Leader</strong><br>Sena Homa</div></div><table class="print-table"><thead><tr><th>Done</th><th>Ward / Unit</th><th>Staff Name</th><th>Role</th><th>Time</th><th>Shift</th><th>Status / Cover</th></tr></thead><tbody>${rows}</tbody></table><div class="print-handover"><div><strong>Team Leader quick checks</strong><br>☐ All staff arrived &nbsp; ☐ Sick calls recorded<br>☐ Priority areas checked &nbsp; ☐ Break coverage confirmed</div><div><strong>Handover and follow-up</strong><br>☐ Outstanding work recorded<br>☐ Floaters allocated &nbsp; ☐ Keys / phone handed over</div><div><strong>Staffing changes / vacancies</strong><br><br>________________________________________</div><div><strong>Incidents / cleaning / maintenance</strong><br><br>________________________________________</div></div></article>`;
+  return `<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • ${esc(day.toUpperCase())} DAILY STAFFING LIST</h2><p>${esc(checklistDate(weekStart,day))} • ${esc(rosterWeekNote(weekStart))}</p></div><div class="print-meta"><div><strong>Day</strong><br>${esc(day)}</div><div><strong>Staff group</strong><br>${esc(roleGroup.label)}</div><div><strong>Team Leader</strong><br>Sena Homa</div></div><table class="print-table"><thead><tr><th>Done</th><th>Ward / Unit</th><th>Staff Name</th><th>Role</th><th>Time</th><th>Shift</th><th>Status / Cover</th></tr></thead><tbody>${rows}</tbody></table><div class="print-handover"><div><strong>Team Leader quick checks</strong><br>☐ All staff arrived &nbsp; ☐ Sick calls recorded<br>☐ Priority areas checked &nbsp; ☐ Break coverage confirmed</div><div><strong>Handover and follow-up</strong><br>☐ Outstanding work recorded<br>☐ Floaters allocated &nbsp; ☐ Keys / phone handed over</div><div><strong>Staffing changes / vacancies</strong><br><br>________________________________________</div><div><strong>Incidents / cleaning / maintenance</strong><br><br>________________________________________</div></div></article>`;
 }
 function generateRosterPrint(options={}){
   const weekStart=options.weekStart||document.getElementById("printWeek")?.value||currentWeekStart;
