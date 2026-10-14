@@ -126,7 +126,7 @@ textarea{min-height:86px;resize:vertical}
   .print-preview{padding:0;border:0;background:#fff}
 }
 
-.bottomnav{grid-template-columns:repeat(7,1fr)}
+.bottomnav{grid-template-columns:repeat(8,1fr)}
 #teamPager,#directoryPager{margin:12px 0;justify-content:space-between;align-items:center}
 .team-scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px;background:white}
 .team-grid{border-collapse:collapse;min-width:1050px;width:100%;font-size:12px}
@@ -218,6 +218,12 @@ textarea{min-height:86px;resize:vertical}
     <div id="reportList"></div>
   </section>
 
+  <section id="checksView" class="hidden">
+    <div class="section-title"><h3>Ward Checks & Complaints</h3><button class="btn primary" onclick="openCheck()">+ New Check</button></div>
+    <p class="section-note">Record the ward or unit, findings, action taken, follow-up and any complaint. Each entry can be printed or emailed.</p>
+    <div id="checksList"></div>
+  </section>
+
   <section id="printView" class="hidden">
     <div class="section-title"><h3>Print Centre</h3></div>
     <p class="section-note">Create day-by-day staffing and hospital checklist pages directly from the saved roster.</p>
@@ -282,6 +288,7 @@ textarea{min-height:86px;resize:vertical}
   <button id="navHome" class="active" onclick="go('home')"><strong>⌂</strong>Home</button>
   <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
   <button id="navSick" onclick="go('sick')"><strong>!</strong>Leave</button>
+  <button id="navChecks" onclick="go('checks')"><strong>✓</strong>Checks</button>
   <button id="navReport" onclick="go('report')"><strong>≡</strong>Reports</button>
   <button id="navPrint" onclick="go('print')"><strong>▤</strong>Print</button>
   <button id="navSet" onclick="go('settings')"><strong>⚙</strong>Settings</button>
@@ -330,6 +337,29 @@ textarea{min-height:86px;resize:vertical}
     <div class="actions">
       <button id="saveBtn" class="btn primary" onclick="saveEntry()">Save</button>
       <button id="deleteBtn" class="btn danger hidden" onclick="deleteEntry()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="checkModal" class="modal hidden" onclick="if(event.target===this) closeCheckModal()">
+  <div class="sheet">
+    <div class="sheethead"><h3 id="checkFormTitle">New Ward Check</h3><button class="iconbtn" onclick="closeCheckModal()">×</button></div>
+    <input type="hidden" id="editCheckId">
+    <div class="formgrid">
+      <div class="field"><label>Date</label><input id="cDate" type="date"></div>
+      <div class="field"><label>Shift</label><select id="cShift"><option>AM</option><option>PM</option><option>Night</option></select></div>
+      <div class="field full"><label>Completed by</label><input id="cLeader" placeholder="Team Leader or Supervisor name"></div>
+      <div class="field full"><label>Ward / Unit checked</label><input id="cWardUnit" placeholder="e.g. Ward E, ED, ICU or Imaging"></div>
+      <div class="field full"><label>Findings</label><textarea id="cFinding" placeholder="What was found during the check"></textarea></div>
+      <div class="field full"><label>Action taken</label><textarea id="cAction" placeholder="What was done and who was notified"></textarea></div>
+      <div class="field full"><label>Follow-up required</label><textarea id="cFollowUp" placeholder="Outstanding action, owner and due time"></textarea></div>
+      <div class="field"><label>Complaint received?</label><select id="cComplaintReceived"><option>No</option><option>Yes</option></select></div>
+      <div class="field full"><label>Complaint details</label><textarea id="cComplaintDetails" placeholder="Concern, action taken, who was notified and follow-up. Do not include patient names or private details."></textarea></div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="saveCheck()">Save Check</button>
+      <button class="btn secondary" onclick="saveCheck(true)">Save & Email</button>
+      <button id="deleteCheckBtn" class="btn danger hidden" onclick="deleteCheck()">Delete</button>
     </div>
   </div>
 </div>
@@ -819,12 +849,13 @@ function printFullWeek(){
   renderPrintPreview();printRosterSelection();
 }
 function go(view){
-  ["homeView","weeklyView","sickView","reportView","printView","settingsView","staffView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
-  ["navHome","navWeek","navSick","navReport","navPrint","navSet","navStaff"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  ["homeView","weeklyView","sickView","checksView","reportView","printView","settingsView","staffView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navChecks","navReport","navPrint","navSet","navStaff"].forEach(id=>document.getElementById(id).classList.remove("active"));
   if(view==="staff"){staffView.classList.remove("hidden");navStaff.classList.add("active");renderDirectory();}
   if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
   if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
   if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
+  if(view==="checks"){checksView.classList.remove("hidden");navChecks.classList.add("active");renderChecks();}
   if(view==="report"){reportView.classList.remove("hidden");navReport.classList.add("active");renderReports();}
   if(view==="print"){printView.classList.remove("hidden");navPrint.classList.add("active");renderPrintPreview();}
   if(view==="settings"){settingsView.classList.remove("hidden");navSet.classList.add("active");}
@@ -899,7 +930,7 @@ function toggleAbsenceFields(){
 }
 function setAccessRole(role){
   accessRole=role;localStorage.setItem("easyRosterAccessRole",role);
-  renderHome();renderWeekly();renderSick();renderReports();
+  renderHome();renderWeekly();renderSick();renderReports();renderChecks();
 }
 function closeModal(){modal.classList.add("hidden")}
 function saveEntry(){
@@ -929,6 +960,37 @@ function deleteEntry(){
 function localDateValue(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
 function formatReportDate(value){if(!value)return "Date not set";return new Intl.DateTimeFormat("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"}).format(new Date(value+"T00:00:00"))}
 function reportSection(title,value){return value?`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value)}</div></div>`:""}
+function checkSummary(r){
+  if(r.recordType!=="check")return r.wardChecks||"No ward-check findings recorded.";
+  return [`Ward / Unit: ${r.wardUnit||"Not recorded"}`,`Findings: ${r.finding||"Nil"}`,`Action taken: ${r.actionTaken||"Nil"}`,`Follow-up: ${r.followUp||"Nil"}`].join("\n");
+}
+function checkCard(r){
+  const editAction=r.recordType==="check"?`openCheck('${r.id}')`:`editReport('${r.id}')`;
+  return `<div class="card"><div class="rowhead"><div><span class="badge ${cls(r.shift)}">${esc(r.shift||"PM")}</span> <strong>${esc(formatReportDate(r.date))}</strong></div><div class="actions" style="margin:0"><button class="btn secondary" onclick="printCheck('${r.id}')">Print/PDF</button><button class="btn secondary" onclick="emailCheck('${r.id}')">Email</button>${canManage()?`<button class="btn secondary" onclick="${editAction}">Edit</button>`:""}</div></div><div class="meta"><strong>Completed by:</strong> ${esc(r.leader||"Not recorded")}</div>${reportSection("Ward checks and findings",checkSummary(r))}${reportSection("Complaint",`Received: ${r.complaintReceived||"No"}${r.complaintDetails?`\n${r.complaintDetails}`:""}`)}</div>`;
+}
+function renderChecks(){
+  const list=reports.filter(r=>r.recordType==="check"||r.wardChecks||r.complaintDetails||r.complaintReceived==="Yes").sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  checksList.innerHTML=list.length?list.map(checkCard).join(""):'<div class="card muted">No ward checks or complaints saved yet. Tap + New Check to add one.</div>';
+}
+function openCheck(id=""){
+  if(!canManage()){alert("Ward checks can be added by Manager, Team Leader and Supervisor roles.");return;}
+  const r=id?reports.find(x=>x.id===id):null;
+  if(r&&r.recordType!=="check"){editReport(id);return;}
+  checkFormTitle.textContent=r?"Edit Ward Check":"New Ward Check";editCheckId.value=r?.id||"";cDate.value=r?.date||localDateValue();cShift.value=r?.shift||"PM";cLeader.value=r?.leader||(accessRole==="Team Leader"?"Sena Homa":"");cWardUnit.value=r?.wardUnit||"";cFinding.value=r?.finding||"";cAction.value=r?.actionTaken||"";cFollowUp.value=r?.followUp||"";cComplaintReceived.value=r?.complaintReceived||"No";cComplaintDetails.value=r?.complaintDetails||"";deleteCheckBtn.classList.toggle("hidden",!r);checkModal.classList.remove("hidden");
+}
+function saveCheck(emailAfter=false){
+  if(!canManage()){alert("You do not have permission to save ward checks.");return;}
+  const id=editCheckId.value;const obj={id:id||uid(),recordType:"check",date:cDate.value,shift:cShift.value,leader:cLeader.value.trim(),wardUnit:cWardUnit.value.trim(),finding:cFinding.value.trim(),actionTaken:cAction.value.trim(),followUp:cFollowUp.value.trim(),complaintReceived:cComplaintReceived.value,complaintDetails:cComplaintDetails.value.trim(),updatedAt:new Date().toISOString()};
+  obj.wardChecks=checkSummary(obj);if(!obj.date||!obj.wardUnit){alert("Please select the date and enter the ward or unit checked.");return;}if(id)reports=reports.map(r=>r.id===id?obj:r);else reports.push(obj);saveReports();closeCheckModal();renderChecks();if(emailAfter)emailCheck(obj.id);
+}
+function emailCheck(id){
+  const r=reports.find(x=>x.id===id);if(!r)return;const body=["WARD CHECK & COMPLAINT RECORD",`Date: ${formatReportDate(r.date)}`,`Shift: ${r.shift||""}`,`Completed by: ${r.leader||""}`,"",checkSummary(r),"",`Complaint received: ${r.complaintReceived||"No"}`,r.complaintDetails||"Nil"].join("\n");window.location.href=`mailto:${encodeURIComponent(reportEmailAddress)}?subject=${encodeURIComponent(`Ward Check - ${r.date||""} - ${r.shift||""}`)}&body=${encodeURIComponent(body)}`;
+}
+function printCheck(id){
+  const r=reports.find(x=>x.id===id);if(!r)return;printRoot.innerHTML=`<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • WARD CHECK & COMPLAINT RECORD</h2><p>General Services follow-up record</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(formatReportDate(r.date))}</div><div><strong>Shift</strong><br>${esc(r.shift||"Not recorded")}</div><div><strong>Completed by</strong><br>${esc(r.leader||"Not recorded")}</div></div>${reportSection("Ward checks and findings",checkSummary(r))}${reportSection("Complaint",`Received: ${r.complaintReceived||"No"}${r.complaintDetails?`\n${r.complaintDetails}`:""}`)}<div class="print-handover"><div><strong>Team Leader signature</strong><br><br>____________________________</div><div><strong>Follow-up completed by / time</strong><br><br>____________________________</div></div></article>`;window.setTimeout(()=>window.print(),80);
+}
+function deleteCheck(){const id=editCheckId.value;if(id&&confirm("Delete this ward check?")){reports=reports.filter(r=>r.id!==id);saveReports();closeCheckModal();renderChecks();}}
+function closeCheckModal(){checkModal.classList.add("hidden")}
 function reportCard(r){
   return `<div class="card">
     <div class="rowhead"><div><span class="badge ${cls(r.shift)}">${esc(r.shift)}</span> <strong>${esc(formatReportDate(r.date))}</strong></div><div class="actions" style="margin:0"><button class="btn secondary" onclick="printReport('${r.id}')">Print/PDF</button><button class="btn secondary" onclick="emailReport('${r.id}')">Email</button>${canManage()?`<button class="btn secondary" onclick="editReport('${r.id}')">Edit</button>`:""}</div></div>
@@ -947,7 +1009,7 @@ function reportCard(r){
   </div>`;
 }
 function renderReports(){
-  const list=[...reports].sort((a,b)=>String(b.date).localeCompare(String(a.date))||["AM","PM","Night"].indexOf(a.shift)-["AM","PM","Night"].indexOf(b.shift));
+  const list=reports.filter(r=>r.recordType!=="check").sort((a,b)=>String(b.date).localeCompare(String(a.date))||["AM","PM","Night"].indexOf(a.shift)-["AM","PM","Night"].indexOf(b.shift));
   document.getElementById("reportList").innerHTML=list.length?list.map(reportCard).join(""):'<div class="card muted">No shift reports saved yet.</div>';
 }
 function openReport(){
@@ -971,7 +1033,7 @@ function saveReport(emailAfter=false){
   const obj={id:id||uid(),date:rDate.value,shift:rShift.value,leader:rLeader.value.trim(),round1:rRound1.value,round2:rRound2.value,roundReason:rRoundReason.value.trim(),equipmentDoor:rEquipmentDoor.value,wasteDoor:rWasteDoor.value,linenDoor:rLinenDoor.value,trolleys:rTrolleys.value,shiftComments:rShiftComments.value.trim(),rosterUKG:rRosterUKG.value.trim(),audits:rAudits.value.trim(),wardRequests:rWardRequests.value.trim(),wardChecks:rWardChecks.value.trim(),complaintReceived:rComplaintReceived.value,complaintDetails:rComplaintDetails.value.trim(),linen:rLinen.value.trim(),waste:rWaste.value.trim(),repairs:rRepairs.value.trim(),safety:rSafety.value.trim(),riskman:rRiskman.value.trim(),updatedAt:new Date().toISOString()};
   if(!obj.date){alert("Please select the report date.");return;}
   if(id)reports=reports.map(r=>r.id===id?obj:r);else reports.push(obj);
-  saveReports();closeReportModal();renderReports();if(emailAfter)emailReport(obj.id);
+  saveReports();closeReportModal();renderReports();renderChecks();if(emailAfter)emailReport(obj.id);
 }
 function setReportEmail(value){reportEmailAddress=String(value||"").trim();localStorage.setItem("easyRosterReportEmail",reportEmailAddress)}
 function emailReport(id){
@@ -993,9 +1055,9 @@ function printReport(id){
   printRoot.innerHTML=`<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • DAILY SHIFT REPORT</h2><p>General Services shift handover record</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(formatReportDate(r.date))}</div><div><strong>Shift</strong><br>${esc(r.shift||"Not recorded")}</div><div><strong>Prepared by</strong><br>${esc(r.leader||"Not recorded")}</div></div><table class="print-table"><tr><th>Mandatory checks</th><th>Result</th></tr><tr><td>First site round</td><td>${esc(r.round1||"Not recorded")}</td></tr><tr><td>Second site round</td><td>${esc(r.round2||"Not recorded")}</td></tr><tr><td>Equipment room door</td><td>${esc(r.equipmentDoor||"Not recorded")}</td></tr><tr><td>Waste room door</td><td>${esc(r.wasteDoor||"Not recorded")}</td></tr><tr><td>Warragul linen room door</td><td>${esc(r.linenDoor||"Not recorded")}</td></tr><tr><td>Linen trolleys</td><td>${esc(r.trolleys||"Not recorded")}</td></tr></table>${sections.map(([title,value])=>`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value||"Nil")}</div></div>`).join("")}<div class="print-handover"><div><strong>Team Leader signature</strong><br><br>____________________________</div><div><strong>Receiving staff / time</strong><br><br>____________________________</div></div></article>`;
   window.setTimeout(()=>window.print(),80);
 }
-function deleteReport(){const id=editReportId.value;if(id&&confirm("Delete this shift report?")){reports=reports.filter(r=>r.id!==id);saveReports();closeReportModal();renderReports();}}
+function deleteReport(){const id=editReportId.value;if(id&&confirm("Delete this shift report?")){reports=reports.filter(r=>r.id!==id);saveReports();closeReportModal();renderReports();renderChecks();}}
 function closeReportModal(){reportModal.classList.add("hidden")}
-function clearAll(){if(confirm("Clear the current roster, roster history and shift reports from this device?")){entries=[];reports=[];rosterHistory=[];save();saveReports();saveRosterHistory();renderHome();renderWeekly();renderSick();renderReports();}}
+function clearAll(){if(confirm("Clear the current roster, roster history and shift reports from this device?")){entries=[];reports=[];rosterHistory=[];save();saveReports();saveRosterHistory();renderHome();renderWeekly();renderSick();renderReports();renderChecks();}}
 function exportData(){
   const blob=new Blob([JSON.stringify({version:3,currentWeekStart,entries,rosterHistory,reports},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="easy-roster-backup.json";a.click();URL.revokeObjectURL(a.href);
