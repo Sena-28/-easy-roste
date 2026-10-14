@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Easy Roster">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Easy Roster</title>
 <style>
 :root{
@@ -125,6 +125,16 @@ textarea{min-height:86px;resize:vertical}
   .print-page{width:100%;max-width:none;min-height:0;margin:0;padding:0;box-shadow:none}
   .print-preview{padding:0;border:0;background:#fff}
 }
+
+.bottomnav{grid-template-columns:repeat(7,1fr)}
+#teamPager,#directoryPager{margin:12px 0;justify-content:space-between;align-items:center}
+.team-scroll{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:12px;background:white}
+.team-grid{border-collapse:collapse;min-width:1050px;width:100%;font-size:12px}
+.team-grid th,.team-grid td{border:1px solid var(--line);padding:9px;vertical-align:top;min-width:130px}
+.team-grid th{background:#e6f0fb;position:sticky;top:0;z-index:2;text-align:left}
+.team-grid th:first-child,.team-grid td:first-child{position:sticky;left:0;background:#edf3f8;min-width:170px;z-index:1}
+.team-grid th:first-child{z-index:3}.grid-shift{display:block;width:100%;border:0;background:#eef5fc;color:var(--navy);border-radius:6px;padding:7px;margin:3px 0;text-align:left;cursor:pointer;line-height:1.5}.grid-shift.on-leave{background:#fff0df;color:#844500}
+@media(min-width:1000px){main,.topbar{max-width:1200px}}
 </style>
 </head>
 <body>
@@ -146,7 +156,7 @@ textarea{min-height:86px;resize:vertical}
       <button class="quick" onclick="showWeekly()"><div class="dot week">7D</div><strong>Weekly Roster</strong><span>Monday to Sunday</span></button>
     </div>
 
-    <div class="section-title"><h3>Find staff</h3><span class="muted" id="staffSearchCount">Type a name</span></div>
+    <div class="card"><strong>Manage your team</strong><p class="muted">200+ staff • Daily, weekly and department roster options • Leave and cover</p><button class="btn primary" onclick="go('staff')">Open Staff Directory</button><p class="muted">Saved on this device. Use Settings to import your existing roster backup.</p><a class="btn secondary" href="Easy_Roster_Paper_Options.pdf" target="_blank" rel="noopener">Open paper roster options</a></div><div class="section-title"><h3>Find staff</h3><span class="muted" id="staffSearchCount">Type a name</span></div>
     <div class="staff-search-wrap">
       <input class="search" id="staffSearchBox" type="search" autocomplete="off" placeholder="Search staff name" aria-label="Search all rostered staff by name" oninput="renderStaffSearch()">
       <button id="clearStaffSearch" class="clear-search hidden" type="button" onclick="clearStaffSearch()">Clear</button>
@@ -184,7 +194,12 @@ textarea{min-height:86px;resize:vertical}
         <select id="shiftFilter" onchange="renderWeekly()"><option value="ALL">All shifts</option><option>AM</option><option>PM</option><option>Night</option><option value="Custom">Shift Covered By</option></select>
       </div>
     </div>
-    <div id="weeklyList"></div>
+    <div class="card formgrid">
+<div class="field"><label for="rosterLayout">Roster options</label><select id="rosterLayout" onchange="renderWeekly()"><option value="daily">Option 1: Daily lists</option><option value="grid">Option 2: Monday–Sunday grid</option><option value="department">Option 3: Department groups</option></select></div>
+<div class="field"><label for="teamRole">Role</label><select id="teamRole" onchange="renderWeekly()"><option value="ALL">All roles</option><option>ESA</option><option>PSA</option><option>MIT A</option><option>Manager</option><option>Team Leader</option><option>Supervisor</option></select></div>
+<div class="field"><label for="teamArea">Department / unit</label><input id="teamArea" placeholder="e.g. Imaging or Ward E" oninput="renderWeekly()"></div>
+<div class="field"><label for="teamLeave">Leave</label><select id="teamLeave" onchange="renderWeekly()"><option value="ALL">All staff</option><option value="ON">Staff on leave</option><option value="WORK">Staff without leave</option><option>Sick</option><option>Annual Leave</option><option>Long Service Leave (LSL)</option><option>WorkCover</option><option>Other Leave</option></select></div>
+</div><div id="teamPager" class="actions"></div><div id="weeklyList"></div>
   </section>
 
   <section id="sickView" class="hidden">
@@ -254,9 +269,16 @@ textarea{min-height:86px;resize:vertical}
       <button class="btn danger" onclick="clearAll()">Clear All Data</button>
     </div>
   </section>
+<section id="staffView" class="hidden">
+<div class="hero"><h2>Staff directory</h2><p id="directoryTotal"></p></div>
+<p class="section-note">Keep staff here even when they have no shifts this week. Names from the roster are included automatically. Similar names remain separate until you verify them.</p>
+<div class="actions"><button class="btn primary" onclick="openStaff()">+ Add staff member</button><button class="btn secondary" onclick="document.getElementById('bulkStaff').classList.toggle('hidden')">Add many staff</button><button class="btn secondary" onclick="go('week')">Monday–Sunday Roster</button></div>
+<div id="bulkStaff" class="card hidden"><h3>Paste your staff list</h3><p class="muted">One person per line. You can paste four columns from a spreadsheet: Name, Role, Ward / Unit, Employment. Roles: ESA, PSA, MIT A, Manager, Team Leader, Supervisor. Employment: Regular, Casual, Pool. Tabs separate columns. Defaults are PSA and Regular.</p><label for="staffPaste">Staff list</label><textarea id="staffPaste" rows="7" placeholder="Full name&#9;PSA&#9;Imaging&#9;Regular"></textarea><div id="bulkPreview" class="meta" role="status"></div><div class="actions"><button class="btn secondary" onclick="previewStaffImport()">Preview list</button><button id="bulkConfirm" class="btn primary hidden" onclick="commitStaffImport()">Add previewed staff</button></div></div>
+<label for="directorySearch">Search name, role or department</label><input id="directorySearch" class="search" type="search" oninput="renderDirectory()" placeholder="Find staff">
+<div id="directoryPager" class="actions"></div><div id="directoryList"></div></section>
 </main>
 
-<nav class="bottomnav">
+<nav class="bottomnav"><button id="navStaff" onclick="go('staff')"><strong>♙</strong>Staff</button>
   <button id="navHome" class="active" onclick="go('home')"><strong>⌂</strong>Home</button>
   <button id="navWeek" onclick="go('week')"><strong>▦</strong>Roster</button>
   <button id="navSick" onclick="go('sick')"><strong>!</strong>Leave</button>
@@ -267,6 +289,8 @@ textarea{min-height:86px;resize:vertical}
 
 <div id="printRoot" class="print-root" aria-hidden="true"></div>
 
+<div id="staffModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="staffModalTitle"><div class="sheet"><div class="sheethead"><h3 id="staffModalTitle">Staff details</h3><button class="iconbtn" aria-label="Close staff details" onclick="staffModal.classList.add('hidden')">×</button></div>
+<form onsubmit="event.preventDefault();saveStaffMember()"><input id="staffEditId" type="hidden"><div class="formgrid"><div class="field full"><label for="staffFullName">Full name</label><input id="staffFullName" required maxlength="120"></div><div class="field"><label for="staffMemberRole">Role</label><select id="staffMemberRole"><option>PSA</option><option>ESA</option><option>MIT A</option><option>Manager</option><option>Team Leader</option><option>Supervisor</option></select></div><div class="field"><label for="staffEmployment">Employment</label><select id="staffEmployment"><option>Regular</option><option>Casual</option><option>Pool</option></select></div><div class="field full"><label for="staffUnit">Department / unit</label><input id="staffUnit" maxlength="120"></div></div><p class="muted">Changing directory details does not change existing roster entries.</p><button class="btn primary" type="submit">Save staff member</button></form></div></div>
 <div id="modal" class="modal hidden" onclick="if(event.target===this) closeModal()">
   <div class="sheet">
     <div class="sheethead"><h3 id="formTitle">Add Staff</h3><button class="iconbtn" onclick="closeModal()">×</button></div>
@@ -274,7 +298,7 @@ textarea{min-height:86px;resize:vertical}
     <div class="formgrid">
       <div class="field"><label>Day</label><select id="fDay"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option></select></div>
       <div class="field"><label>Shift</label><select id="fShift" onchange="applyDefaults()"><option>AM</option><option>PM</option><option>Night</option><option value="Custom">Shift Covered By</option></select></div>
-      <div class="field full"><label>Staff name</label><input id="fName" placeholder="Staff name"></div>
+      <div class="field full"><label>Staff name</label><input id="fName" placeholder="Staff name" list="staffNames" onchange="fillDirectoryStaff()"><datalist id="staffNames"></datalist></div>
       <div class="field full"><label>Role</label><select id="fRole"><option>ESA</option><option>PSA</option><option>MIT A</option><option>Manager</option><option>Team Leader</option><option>Supervisor</option></select></div>
       <div class="field full"><label>Ward / Unit</label><input id="fWard" placeholder="Ward or unit"></div>
       <div class="field"><label>Start</label><input id="fStart" type="time"></div>
@@ -329,6 +353,9 @@ textarea{min-height:86px;resize:vertical}
       <div class="field full"><label>Roster & UKG issues</label><textarea id="rRosterUKG" placeholder="Shift, reason, who covered and whether UKG was updated"></textarea></div>
       <div class="field full"><label>Fluoro, discharge and patient-experience audits</label><textarea id="rAudits" placeholder="Audits completed and follow-up required"></textarea></div>
       <div class="field full"><label>Ward requests and internal transfers</label><textarea id="rWardRequests" placeholder="Requests, transfers and outstanding actions"></textarea></div>
+      <div class="field full"><label>Ward checks and findings</label><textarea id="rWardChecks" placeholder="Ward or unit checked, finding, action taken and follow-up required"></textarea></div>
+      <div class="field"><label>Complaint received?</label><select id="rComplaintReceived"><option>No</option><option>Yes</option></select></div>
+      <div class="field full"><label>Complaint details</label><textarea id="rComplaintDetails" placeholder="Area involved, concern, action taken, who was notified and follow-up. Do not include patient names or private details."></textarea></div>
       <div class="field full"><label>Linen</label><textarea id="rLinen" placeholder="Stock levels, Warragul linen communication and discrepancies"></textarea></div>
       <div class="field full"><label>Waste management</label><textarea id="rWaste" placeholder="Skip bins, clinical waste bins and outstanding issues"></textarea></div>
       <div class="field full"><label>Repairs and maintenance requests</label><textarea id="rRepairs" placeholder="Faults, job numbers and follow-up"></textarea></div>
@@ -792,8 +819,9 @@ function printFullWeek(){
   renderPrintPreview();printRosterSelection();
 }
 function go(view){
-  ["homeView","weeklyView","sickView","reportView","printView","settingsView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
-  ["navHome","navWeek","navSick","navReport","navPrint","navSet"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  ["homeView","weeklyView","sickView","reportView","printView","settingsView","staffView"].forEach(id=>document.getElementById(id).classList.add("hidden"));
+  ["navHome","navWeek","navSick","navReport","navPrint","navSet","navStaff"].forEach(id=>document.getElementById(id).classList.remove("active"));
+  if(view==="staff"){staffView.classList.remove("hidden");navStaff.classList.add("active");renderDirectory();}
   if(view==="home"){homeView.classList.remove("hidden");navHome.classList.add("active");renderHome();}
   if(view==="week"){weeklyView.classList.remove("hidden");navWeek.classList.add("active");renderWeekly();}
   if(view==="sick"){sickView.classList.remove("hidden");navSick.classList.add("active");renderSick();}
@@ -911,6 +939,8 @@ function reportCard(r){
     ${reportSection("Roster & UKG issues",r.rosterUKG||r.staffing)}
     ${reportSection("Fluoro, discharge and patient-experience audits",r.audits)}
     ${reportSection("Ward requests and internal transfers",r.wardRequests)}
+    ${reportSection("Ward checks and findings",r.wardChecks)}
+    ${reportSection("Complaints",`${r.complaintReceived||"No"}${r.complaintDetails?` • ${r.complaintDetails}`:""}`)}
     ${reportSection("Linen",r.linen)}${reportSection("Waste management",r.waste)}
     ${reportSection("Repairs and maintenance requests",r.repairs||r.maintenance)}
     ${reportSection("Safety issues raised",r.safety||r.incidents)}${reportSection("RiskMan entries and injuries",r.riskman)}
@@ -924,7 +954,7 @@ function openReport(){
   if(!canManage()){alert("Shift reports can be added by Manager, Team Leader and Supervisor roles.");return;}
   reportFormTitle.textContent="New Shift Report";editReportId.value="";rDate.value=localDateValue();rShift.value="PM";rLeader.value=accessRole==="Team Leader"?"Sena Homa":"";
   rRound1.value="Completed";rRound2.value="Completed";rRoundReason.value="";rEquipmentDoor.value="Yes";rWasteDoor.value="Yes";rLinenDoor.value="Yes";rTrolleys.value="Yes";
-  rShiftComments.value="";rRosterUKG.value="";rAudits.value="";rWardRequests.value="";rLinen.value="";rWaste.value="";rRepairs.value="";rSafety.value="";rRiskman.value="";
+  rShiftComments.value="";rRosterUKG.value="";rAudits.value="";rWardRequests.value="";rWardChecks.value="";rComplaintReceived.value="No";rComplaintDetails.value="";rLinen.value="";rWaste.value="";rRepairs.value="";rSafety.value="";rRiskman.value="";
   deleteReportBtn.classList.add("hidden");reportModal.classList.remove("hidden");
 }
 function editReport(id){
@@ -932,13 +962,13 @@ function editReport(id){
   const r=reports.find(x=>x.id===id);if(!r)return;
   reportFormTitle.textContent="Edit Shift Report";editReportId.value=r.id;rDate.value=r.date||"";rShift.value=r.shift||"PM";rLeader.value=r.leader||"";
   rRound1.value=r.round1||"Not applicable";rRound2.value=r.round2||"Not applicable";rRoundReason.value=r.roundReason||"";rEquipmentDoor.value=r.equipmentDoor||"Not checked";rWasteDoor.value=r.wasteDoor||"Not checked";rLinenDoor.value=r.linenDoor||"Not checked";rTrolleys.value=r.trolleys||"Not checked";
-  rShiftComments.value=r.shiftComments||[r.cleaning?`Cleaning: ${r.cleaning}`:"",r.handover||""].filter(Boolean).join("\n");rRosterUKG.value=r.rosterUKG||r.staffing||"";rAudits.value=r.audits||"";rWardRequests.value=r.wardRequests||"";rLinen.value=r.linen||"";rWaste.value=r.waste||"";rRepairs.value=r.repairs||r.maintenance||"";rSafety.value=r.safety||r.incidents||"";rRiskman.value=r.riskman||"";
+  rShiftComments.value=r.shiftComments||[r.cleaning?`Cleaning: ${r.cleaning}`:"",r.handover||""].filter(Boolean).join("\n");rRosterUKG.value=r.rosterUKG||r.staffing||"";rAudits.value=r.audits||"";rWardRequests.value=r.wardRequests||"";rWardChecks.value=r.wardChecks||"";rComplaintReceived.value=r.complaintReceived||"No";rComplaintDetails.value=r.complaintDetails||"";rLinen.value=r.linen||"";rWaste.value=r.waste||"";rRepairs.value=r.repairs||r.maintenance||"";rSafety.value=r.safety||r.incidents||"";rRiskman.value=r.riskman||"";
   deleteReportBtn.classList.remove("hidden");reportModal.classList.remove("hidden");
 }
 function saveReport(emailAfter=false){
   if(!canManage()){alert("You do not have permission to save shift reports.");return;}
   const id=editReportId.value;
-  const obj={id:id||uid(),date:rDate.value,shift:rShift.value,leader:rLeader.value.trim(),round1:rRound1.value,round2:rRound2.value,roundReason:rRoundReason.value.trim(),equipmentDoor:rEquipmentDoor.value,wasteDoor:rWasteDoor.value,linenDoor:rLinenDoor.value,trolleys:rTrolleys.value,shiftComments:rShiftComments.value.trim(),rosterUKG:rRosterUKG.value.trim(),audits:rAudits.value.trim(),wardRequests:rWardRequests.value.trim(),linen:rLinen.value.trim(),waste:rWaste.value.trim(),repairs:rRepairs.value.trim(),safety:rSafety.value.trim(),riskman:rRiskman.value.trim(),updatedAt:new Date().toISOString()};
+  const obj={id:id||uid(),date:rDate.value,shift:rShift.value,leader:rLeader.value.trim(),round1:rRound1.value,round2:rRound2.value,roundReason:rRoundReason.value.trim(),equipmentDoor:rEquipmentDoor.value,wasteDoor:rWasteDoor.value,linenDoor:rLinenDoor.value,trolleys:rTrolleys.value,shiftComments:rShiftComments.value.trim(),rosterUKG:rRosterUKG.value.trim(),audits:rAudits.value.trim(),wardRequests:rWardRequests.value.trim(),wardChecks:rWardChecks.value.trim(),complaintReceived:rComplaintReceived.value,complaintDetails:rComplaintDetails.value.trim(),linen:rLinen.value.trim(),waste:rWaste.value.trim(),repairs:rRepairs.value.trim(),safety:rSafety.value.trim(),riskman:rRiskman.value.trim(),updatedAt:new Date().toISOString()};
   if(!obj.date){alert("Please select the report date.");return;}
   if(id)reports=reports.map(r=>r.id===id?obj:r);else reports.push(obj);
   saveReports();closeReportModal();renderReports();if(emailAfter)emailReport(obj.id);
@@ -950,7 +980,7 @@ function emailReport(id){
     "DAILY SHIFT REPORT - Casey General Services",`Date: ${formatReportDate(r.date)}`,`Shift: ${r.shift||""}`,`Name: ${r.leader||""}`,"",
     `First site round: ${r.round1||"Not recorded"}`,`Second site round: ${r.round2||"Not recorded"}`,`Reason not completed: ${r.roundReason||"N/A"}`,
     `Cleaning equipment room door closed: ${r.equipmentDoor||"Not recorded"}`,`Waste handling room door closed: ${r.wasteDoor||"Not recorded"}`,`Warragul linen room door closed: ${r.linenDoor||"Not recorded"}`,`Linen trolleys stacked properly: ${r.trolleys||"Not recorded"}`,"",
-    `SHIFT COMMENTS / SIGNIFICANT ISSUES\n${r.shiftComments||r.handover||"Nil"}`,"",`ROSTER & UKG ISSUES\n${r.rosterUKG||r.staffing||"Nil"}`,"",`AUDITS\n${r.audits||"Nil"}`,"",`WARD REQUESTS / INTERNAL TRANSFERS\n${r.wardRequests||"Nil"}`,"",`LINEN\n${r.linen||"Nil"}`,"",`WASTE MANAGEMENT\n${r.waste||"Nil"}`,"",`REPAIRS AND MAINTENANCE\n${r.repairs||r.maintenance||"Nil"}`,"",`SAFETY ISSUES\n${r.safety||r.incidents||"Nil"}`,"",`RISKMAN ENTRIES / INJURIES\n${r.riskman||"Nil"}`
+    `SHIFT COMMENTS / SIGNIFICANT ISSUES\n${r.shiftComments||r.handover||"Nil"}`,"",`ROSTER & UKG ISSUES\n${r.rosterUKG||r.staffing||"Nil"}`,"",`AUDITS\n${r.audits||"Nil"}`,"",`WARD REQUESTS / INTERNAL TRANSFERS\n${r.wardRequests||"Nil"}`,"",`WARD CHECKS AND FINDINGS\n${r.wardChecks||"Nil"}`,"",`COMPLAINTS\nReceived: ${r.complaintReceived||"No"}\n${r.complaintDetails||"Nil"}`,"",`LINEN\n${r.linen||"Nil"}`,"",`WASTE MANAGEMENT\n${r.waste||"Nil"}`,"",`REPAIRS AND MAINTENANCE\n${r.repairs||r.maintenance||"Nil"}`,"",`SAFETY ISSUES\n${r.safety||r.incidents||"Nil"}`,"",`RISKMAN ENTRIES / INJURIES\n${r.riskman||"Nil"}`
   ];
   const subject=`Shift Report - ${r.date||""} - ${r.shift||""}`;
   window.location.href=`mailto:${encodeURIComponent(reportEmailAddress)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(rows.join("\n"))}`;
@@ -958,7 +988,7 @@ function emailReport(id){
 function printReport(id){
   const r=reports.find(x=>x.id===id);if(!r)return;
   const sections=[
-    ["Reason site round not completed",r.roundReason],["Shift comments / significant issues",r.shiftComments||r.handover],["Roster & UKG issues",r.rosterUKG||r.staffing],["Audits",r.audits],["Ward requests / internal transfers",r.wardRequests],["Linen",r.linen],["Waste management",r.waste],["Repairs and maintenance",r.repairs||r.maintenance],["Safety issues",r.safety||r.incidents],["RiskMan entries / injuries",r.riskman]
+    ["Reason site round not completed",r.roundReason],["Shift comments / significant issues",r.shiftComments||r.handover],["Roster & UKG issues",r.rosterUKG||r.staffing],["Audits",r.audits],["Ward requests / internal transfers",r.wardRequests],["Ward checks and findings",r.wardChecks],["Complaints",`Received: ${r.complaintReceived||"No"}${r.complaintDetails?`\n${r.complaintDetails}`:""}`],["Linen",r.linen],["Waste management",r.waste],["Repairs and maintenance",r.repairs||r.maintenance],["Safety issues",r.safety||r.incidents],["RiskMan entries / injuries",r.riskman]
   ];
   printRoot.innerHTML=`<article class="print-page"><div class="print-header"><h2>CASEY HOSPITAL • DAILY SHIFT REPORT</h2><p>General Services shift handover record</p></div><div class="print-meta"><div><strong>Date</strong><br>${esc(formatReportDate(r.date))}</div><div><strong>Shift</strong><br>${esc(r.shift||"Not recorded")}</div><div><strong>Prepared by</strong><br>${esc(r.leader||"Not recorded")}</div></div><table class="print-table"><tr><th>Mandatory checks</th><th>Result</th></tr><tr><td>First site round</td><td>${esc(r.round1||"Not recorded")}</td></tr><tr><td>Second site round</td><td>${esc(r.round2||"Not recorded")}</td></tr><tr><td>Equipment room door</td><td>${esc(r.equipmentDoor||"Not recorded")}</td></tr><tr><td>Waste room door</td><td>${esc(r.wasteDoor||"Not recorded")}</td></tr><tr><td>Warragul linen room door</td><td>${esc(r.linenDoor||"Not recorded")}</td></tr><tr><td>Linen trolleys</td><td>${esc(r.trolleys||"Not recorded")}</td></tr></table>${sections.map(([title,value])=>`<div class="report-section"><strong>${esc(title)}</strong><div class="report-text">${esc(value||"Nil")}</div></div>`).join("")}<div class="print-handover"><div><strong>Team Leader signature</strong><br><br>____________________________</div><div><strong>Receiving staff / time</strong><br><br>____________________________</div></div></article>`;
   window.setTimeout(()=>window.print(),80);
@@ -975,8 +1005,41 @@ function importData(ev){
   r.onload=()=>{try{const data=JSON.parse(r.result);if(Array.isArray(data)){entries=data}else{entries=Array.isArray(data.entries)?data.entries:[];reports=Array.isArray(data.reports)?data.reports:[];rosterHistory=Array.isArray(data.rosterHistory)?data.rosterHistory:[];if(data.currentWeekStart){currentWeekStart=data.currentWeekStart;selectedWeekStart=currentWeekStart;localStorage.setItem("easyRosterCurrentWeekStart",currentWeekStart)}}save();saveReports();saveRosterHistory();renderHome();renderWeekly();renderSick();renderReports();alert("Backup imported.");}catch{alert("Could not read that backup file.");}};
   r.readAsText(f);
 }
+const TEAM_ROLES=['ESA','PSA','MIT A','Manager','Team Leader','Supervisor'];
+let staffDirectory=[];
+try{const value=JSON.parse(localStorage.getItem('easyRosterDirectory')||'[]');if(Array.isArray(value))staffDirectory=value;}catch{}
+let rosterPage=0,rosterFilterKey='',directoryPage=0,directoryFilterKey='',pendingStaff=[];
+const TEAM_PAGE_SIZE=30;
+function realStaffName(name){return name&& !/^(vacant|day off|see vacancy|new staff|pool\/vacancy)/i.test(name.trim());}
+function directoryKey(name){return normaliseSearch(name);}
+function saveDirectory(){localStorage.setItem('easyRosterDirectory',JSON.stringify(staffDirectory));refreshStaffNames();}
+function syncDirectory(){const names=new Set(staffDirectory.map(s=>directoryKey(s.name)));for(const e of entries){if(realStaffName(e.name)&&!names.has(directoryKey(e.name))){staffDirectory.push({id:uid(),name:e.name.trim(),role:e.role||'PSA',ward:e.ward||'',employment:'Regular'});names.add(directoryKey(e.name));}}saveDirectory();}
+function refreshStaffNames(){const list=document.getElementById('staffNames');if(list)list.innerHTML=staffDirectory.map(s=>`<option value="${esc(s.name)}"></option>`).join('');}
+function fillDirectoryStaff(){const staff=staffDirectory.find(s=>directoryKey(s.name)===directoryKey(fName.value));if(staff){fRole.value=staff.role;fWard.value=staff.ward;}}
+function openStaff(id){const s=staffDirectory.find(s=>s.id===id);staffEditId.value=s?.id||'';staffFullName.value=s?.name||'';staffMemberRole.value=s?.role||'PSA';staffUnit.value=s?.ward||'';staffEmployment.value=s?.employment||'Regular';staffModal.classList.remove('hidden');staffFullName.focus();}
+function saveStaffMember(){const obj={id:staffEditId.value||uid(),name:staffFullName.value.trim(),role:staffMemberRole.value,ward:staffUnit.value.trim(),employment:staffEmployment.value};if(!obj.name)return;if(staffDirectory.some(s=>s.id!==obj.id&&directoryKey(s.name)===directoryKey(obj.name))){alert('That name already exists. Use full names to distinguish people with the same name.');return;}const at=staffDirectory.findIndex(s=>s.id===obj.id);if(at>=0)staffDirectory[at]=obj;else staffDirectory.push(obj);saveDirectory();staffModal.classList.add('hidden');renderDirectory();renderHome();}
+function pagerHTML(page,total,action,label){const pages=Math.max(1,Math.ceil(total/TEAM_PAGE_SIZE));return `<span class="muted">${total} ${label} • Page ${page+1} of ${pages}</span><div><button class="btn secondary" ${page===0?'disabled':''} onclick="${action}(-1)">Previous</button> <button class="btn secondary" ${page+1>=pages?'disabled':''} onclick="${action}(1)">Next</button></div>`;}
+function changeDirectoryPage(delta){directoryPage+=delta;renderDirectory();}
+function renderDirectory(){const q=normaliseSearch(directorySearch.value);if(q!==directoryFilterKey){directoryPage=0;directoryFilterKey=q;}const list=staffDirectory.filter(s=>normaliseSearch([s.name,s.role,s.ward,s.employment].join(' ')).includes(q)).sort((a,b)=>a.name.localeCompare(b.name));directoryPage=Math.max(0,Math.min(directoryPage,Math.ceil(list.length/TEAM_PAGE_SIZE)-1));directoryTotal.textContent=`${staffDirectory.length} staff members • No 200-staff limit`;directoryPager.innerHTML=pagerHTML(directoryPage,list.length,'changeDirectoryPage','staff');directoryList.innerHTML=list.slice(directoryPage*TEAM_PAGE_SIZE,(directoryPage+1)*TEAM_PAGE_SIZE).map(s=>`<div class="card"><strong>${esc(s.name)}</strong><div class="meta">${esc(s.role)} • ${esc(s.ward||'Unit not set')} • ${esc(s.employment||'Regular')}</div><div class="actions"><button class="btn secondary" onclick="openStaff('${s.id}')">Edit details</button><button class="btn primary" onclick="addDirectoryShift('${s.id}')">Add shift</button></div></div>`).join('')||'<div class="card muted">No staff found.</div>';}
+function addDirectoryShift(id){const staff=staffDirectory.find(s=>s.id===id);if(!staff)return;selectedWeekStart=currentWeekStart;go('week');openAdd();fName.value=staff.name;fRole.value=staff.role;fWard.value=staff.ward;}
+function parseStaffPaste(text){const rows=text.split(/\r?\n/).filter(line=>line.trim());const known=new Set(staffDirectory.map(s=>directoryKey(s.name)));const added=[];let duplicates=0;for(let i=0;i<rows.length;i++){const cols=rows[i].split('\t').map(s=>s.trim());if(i===0&&/^(name|full name|staff name)$/i.test(cols[0]))continue;const [name,role='PSA',ward='',employment='Regular']=cols;if(cols.length>4||!name||name.length>120||!realStaffName(name))throw new Error(`Check line ${i+1}: use a staff name and up to four tab-separated columns.`);if(role&&!TEAM_ROLES.includes(role))throw new Error(`Check line ${i+1}: unknown role ${role}.`);if(employment&&!['Regular','Casual','Pool'].includes(employment))throw new Error(`Check line ${i+1}: use Regular, Casual or Pool.`);if(known.has(directoryKey(name))){duplicates++;continue;}known.add(directoryKey(name));added.push({id:uid(),name,role:role||'PSA',ward,employment:employment||'Regular'});}return {added,duplicates};}
+function previewStaffImport(){try{const result=parseStaffPaste(staffPaste.value);pendingStaff=result.added;bulkPreview.textContent=`${pendingStaff.length} new staff ready. ${result.duplicates} existing or duplicate names skipped. Sample: ${pendingStaff.slice(0,5).map(s=>s.name).join(', ')||'none'}.`;bulkConfirm.classList.toggle('hidden',!pendingStaff.length);}catch(e){pendingStaff=[];bulkPreview.textContent=e.message;bulkConfirm.classList.add('hidden');}}
+function commitStaffImport(){if(!pendingStaff.length)return;const count=pendingStaff.length;staffDirectory.push(...pendingStaff);pendingStaff=[];saveDirectory();staffPaste.value='';bulkConfirm.classList.add('hidden');bulkPreview.textContent=`Added ${count} staff. Existing roster shifts preserved.`;renderDirectory();renderHome();}
+staffPaste.addEventListener('input',()=>{pendingStaff=[];bulkConfirm.classList.add('hidden');bulkPreview.textContent='Preview the updated list before adding.';});
+function changeRosterPage(delta){rosterPage+=delta;renderWeekly();}
+function rosterGridHTML(list){const names=[...new Set(list.map(e=>e.name))].sort((a,b)=>a.localeCompare(b));const page=names.slice(rosterPage*TEAM_PAGE_SIZE,(rosterPage+1)*TEAM_PAGE_SIZE);const byName=new Map(names.map(n=>[n,list.filter(e=>e.name===n)]));return `<div class="team-scroll"><table class="team-grid"><thead><tr><th>Staff member</th>${DAYS.map((day,i)=>`<th>${esc(day)}<br>${esc(formatReportDate(addDays(selectedWeekStart,i)).split(',').slice(1).join(',').trim())}</th>`).join('')}</tr></thead><tbody>${page.map(name=>`<tr><td><strong>${esc(name||'Unnamed staff')}</strong></td>${DAYS.map(day=>`<td>${byName.get(name).filter(e=>e.day===day).map(e=>`<button class="grid-shift ${hasAbsence(e)?'on-leave':''}" onclick="${isHistoryView()?'':`editEntry('${e.id}')`}">${esc(e.start)}–${esc(e.finish)}<br>${esc(e.ward)} • ${esc(e.role)}${hasAbsence(e)?`<br><strong>${esc(absenceLabel(e))}</strong><br>Cover: ${esc(e.replacement||'Needed')} (${esc(e.replacementStatus||'Needed')})`:''}</button>`).join('')||'<span class="muted">No shift</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
+renderWeekly=function(){const q=(searchBox.value||'').toLowerCase(),day=dayFilter.value,shift=shiftFilter.value,role=teamRole.value,area=normaliseSearch(teamArea.value),leave=teamLeave.value,layout=rosterLayout.value;const key=JSON.stringify([q,day,shift,role,area,leave,layout,selectedWeekStart]);if(key!==rosterFilterKey){rosterPage=0;rosterFilterKey=key;}const list=selectedEntries().filter(e=>(day==='ALL'||e.day===day)&&(shift==='ALL'||e.shift===shift)&&(role==='ALL'||e.role===role)&&(!area||normaliseSearch(e.ward).includes(area))&&(!q||JSON.stringify(e).toLowerCase().includes(q))&&(leave==='ALL'||(leave==='ON'?hasAbsence(e):leave==='WORK'?!hasAbsence(e):absenceLabel(e)===leave)));list.sort(layout==='department'?(a,b)=>String(a.ward).localeCompare(String(b.ward))||weeklySort(a,b):weeklySort);const total=layout==='grid'?new Set(list.map(e=>e.name)).size:list.length;rosterPage=Math.max(0,Math.min(rosterPage,Math.ceil(total/TEAM_PAGE_SIZE)-1));teamPager.innerHTML=pagerHTML(rosterPage,total,'changeRosterPage',layout==='grid'?'staff':'shifts');renderWeekSelector();if(!list.length)weeklyList.innerHTML='<div class="card muted">No roster entries match your filters.</div>';else if(layout==='grid')weeklyList.innerHTML=rosterGridHTML(list);else{const page=list.slice(rosterPage*TEAM_PAGE_SIZE,(rosterPage+1)*TEAM_PAGE_SIZE);if(layout==='department'){let last='';weeklyList.innerHTML=page.map(e=>{const heading=e.ward!==last?`<div class="area-heading">${esc(e.ward||'No unit')}</div>`:'';last=e.ward;return heading+entryCard(e,isHistoryView());}).join('');}else weeklyList.innerHTML=groupedWeeklyCards(page,isHistoryView());}renderPMSickSummary();};
+const originalSaveEntry=saveEntry;
+saveEntry=function(){originalSaveEntry();syncDirectory();};
+const originalRenderHome=renderHome;
+renderHome=function(){originalRenderHome();heroSummary.textContent=`${staffDirectory.length} staff in directory • ${entries.length} shifts this week • ${entries.filter(hasAbsence).length} leave entries`;};
+exportData=function(){const blob=new Blob([JSON.stringify({version:4,currentWeekStart,entries,rosterHistory,plannedRosterWeeks,reports,staffDirectory},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='easy-roster-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+function validateBackup(value){const data=Array.isArray(value)?{entries:value}:value;if(!data||!Array.isArray(data.entries))throw new Error('No roster entries found in this backup.');const lists=[data.entries,...(data.rosterHistory||[]).map(w=>w.entries),...(data.plannedRosterWeeks||[]).map(w=>w.entries)];for(const list of lists){if(!Array.isArray(list))throw new Error('Invalid saved week.');for(const e of list){if(!e||typeof e.id!=='string'||!/^[a-zA-Z0-9_-]+$/.test(e.id)||!DAYS.includes(e.day)||typeof e.name!=='string'||typeof e.ward!=='string')throw new Error('Invalid roster entry.');}}if(data.currentWeekStart&&!/^\d{4}-\d{2}-\d{2}$/.test(data.currentWeekStart))throw new Error('Invalid week date.');if(data.staffDirectory&&(!Array.isArray(data.staffDirectory)||data.staffDirectory.some(s=>!s||typeof s.name!=='string'||typeof s.id!=='string'||!/^[a-zA-Z0-9_-]+$/.test(s.id)||!TEAM_ROLES.includes(s.role))))throw new Error('Invalid staff directory.');if(data.reports&&(!Array.isArray(data.reports)||data.reports.some(r=>!r||typeof r.id!=='string'||!/^[a-zA-Z0-9_-]+$/.test(r.id))))throw new Error('Invalid shift reports.');return data;}
+importData=function(ev){const f=ev.target.files[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const data=validateBackup(JSON.parse(reader.result));if(!confirm('Replace this device’s roster, saved weeks and reports with this backup? Export your current backup first if needed.'))return;const snapshot={entries,rosterHistory,plannedRosterWeeks,reports,staffDirectory,currentWeekStart};localStorage.setItem('easyRosterBeforeImport',JSON.stringify(snapshot));entries=data.entries;reports=data.reports||[];rosterHistory=data.rosterHistory||[];plannedRosterWeeks=data.plannedRosterWeeks||[];staffDirectory=data.staffDirectory||[];if(data.currentWeekStart){currentWeekStart=data.currentWeekStart;selectedWeekStart=currentWeekStart;localStorage.setItem('easyRosterCurrentWeekStart',currentWeekStart);}save();saveReports();saveRosterHistory();savePlannedRosterWeeks();syncDirectory();renderHome();renderWeekly();renderSick();renderReports();alert('Backup imported with staff, leave and saved weeks.');}catch(e){alert('Backup could not be imported: '+e.message);}finally{ev.target.value='';}};reader.readAsText(f);};
+syncDirectory();
+
 renderHome();
-if("serviceWorker" in navigator){navigator.serviceWorker.register("service-worker.js").catch(()=>{});}
+
 </script>
 </body>
 </html>
